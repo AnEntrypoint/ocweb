@@ -1,0 +1,60 @@
+import { createElement, applyDiff } from "webjsx";
+import { state, dispatch, getFilteredAgents } from "../store.js";
+import { avatarDataUrl } from "../avatar.js";
+
+const FILTERS = [
+  { value: "all", label: "All" },
+  { value: "running", label: "Running" },
+  { value: "approvals", label: "Approvals" },
+];
+
+const STATUS_BADGE = { idle: "ui-badge-status-idle", running: "ui-badge-status-running", error: "ui-badge-status-error" };
+const STATUS_LABEL = { idle: "Idle", running: "Running", error: "Error" };
+
+let onCreateCb = null;
+
+function renderAgent(agent) {
+  const selected = state.selectedAgentId === agent.agentId;
+  const avatarSrc = avatarDataUrl(agent.avatarSeed || agent.agentId, 42);
+  return createElement("button", {
+    class: "ui-card" + (selected ? " ui-card-selected" : ""),
+    style: "position:relative;display:flex;width:100%;align-items:center;gap:10px;overflow:hidden;border-width:1px;padding:10px 12px;text-align:left;transition:background 150ms" + (!selected ? ";cursor:pointer" : ""),
+    onclick: () => dispatch({ type: "selectAgent", agentId: agent.agentId })
+  },
+    selected ? createElement("span", { class: "ui-card-select-indicator", style: "opacity:1" }) : null,
+    createElement("img", { src: avatarSrc, width: "42", height: "42", style: "border-radius:var(--radius-small);flex-shrink:0" + (selected ? ";box-shadow:0 0 0 2px color-mix(in oklch,var(--primary) 36%,transparent)" : "") }),
+    createElement("div", { style: "min-width:0;flex:1" },
+      createElement("p", { style: "font-size:13px;font-weight:600;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, agent.name),
+      createElement("div", { style: "margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;align-items:center" },
+        createElement("span", { class: "ui-badge " + (STATUS_BADGE[agent.status] || "ui-badge-status-idle") }, STATUS_LABEL[agent.status] || agent.status),
+        agent.awaitingUserInput ? createElement("span", { class: "ui-badge ui-badge-approval" }, "Needs approval") : null
+      )
+    ),
+    agent.hasUnseenActivity && !selected ? createElement("span", { style: "position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--primary)" }) : null
+  );
+}
+
+function render(el, onCreate) {
+  if (onCreate) onCreateCb = onCreate;
+  const agents = getFilteredAgents();
+  const vdom = createElement("aside", { class: "glass-panel fade-up-delay", style: "display:flex;height:100%;width:100%;flex-direction:column;gap:10px;background:var(--sidebar);padding:12px" },
+    createElement("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px" },
+      createElement("p", { style: "font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--foreground)" }, "Agents (" + state.agents.length + ")"),
+      createElement("button", { class: "ui-btn-primary", style: "padding:6px 12px;font-size:11px", onclick: () => onCreateCb && onCreateCb() }, "New agent")
+    ),
+    createElement("div", { class: "ui-segment", style: "grid-template-columns:repeat(3,1fr)" },
+      ...FILTERS.map(f => createElement("button", {
+        class: "ui-segment-item", "data-active": state.focusFilter === f.value ? "true" : "false",
+        onclick: () => { dispatch({ type: "setFilter", filter: f.value }); render(el); }
+      }, f.label))
+    ),
+    createElement("div", { class: "ui-scroll", style: "flex:1;min-height:0;overflow-y:auto" },
+      agents.length === 0
+        ? createElement("div", { style: "padding:12px;color:var(--muted-foreground);font-size:12px;text-align:center" }, "No agents available.")
+        : createElement("div", { style: "display:flex;flex-direction:column;gap:8px" }, ...agents.map(renderAgent))
+    )
+  );
+  applyDiff(el, vdom);
+}
+
+export { render };

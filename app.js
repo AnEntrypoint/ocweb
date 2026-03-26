@@ -1,73 +1,70 @@
 import { createElement, applyDiff } from "webjsx";
-import { getRoute, navigate, onRouteChange, init as initRouter } from "./router.js";
-import { STORE } from "./store.js";
+import { state, dispatch, subscribe, uid } from "./store.js";
+import { render as renderHeader } from "./components/header-bar.js";
+import { render as renderSidebar } from "./components/fleet-sidebar.js";
+import { render as renderChat } from "./components/agent-chat-panel.js";
+import { render as renderInspect } from "./components/agent-inspect-panels.js";
+import { render as renderGateway, init as initGateway } from "./components/gateway-connect.js";
+import { render as renderModal, open as openModal } from "./components/agent-create-modal.js";
 
-const pages = {};
-const NAV = [
-  { id: "agents", label: "Agents", icon: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v-2h4m14 0a6 6 0 01-6 6" },
-  { id: "chat", label: "Chat", icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" },
-  { id: "jobs", label: "Jobs", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
-  { id: "settings", label: "Settings", icon: "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" }
+const DEMO_AGENTS = [
+  { agentId: "agent-research", name: "research-bot", sessionKey: uid(), avatarSeed: "research-bot", model: "claude-sonnet-4", sessionExecHost: "sandbox", sessionExecSecurity: "deny", sessionExecAsk: "on-miss" },
+  { agentId: "agent-deploy", name: "deploy-agent", sessionKey: uid(), avatarSeed: "deploy-agent", model: "claude-opus-4", sessionExecHost: "gateway", sessionExecSecurity: "allowlist", sessionExecAsk: "always" },
+  { agentId: "agent-data", name: "data-pipeline", sessionKey: uid(), avatarSeed: "data-pipeline", model: "claude-haiku-4", sessionExecHost: "node", sessionExecSecurity: "full", sessionExecAsk: "off" },
 ];
 
-function svgIcon(d) {
-  const ns = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
-  svg.setAttribute("width", "18");
-  svg.setAttribute("height", "18");
-  const path = document.createElementNS(ns, "path");
-  path.setAttribute("d", d);
-  svg.appendChild(path);
-  return svg;
-}
+let els = {};
 
-async function loadPage(id) {
-  if (!pages[id]) {
-    const mod = await import("./pages/" + id + ".js");
-    pages[id] = mod;
-  }
-  return pages[id];
-}
-
-function renderShell(route) {
+function mount() {
   const app = document.getElementById("app");
-  const vdom = createElement("div", { class: "app-layout" },
-    createElement("aside", { class: "sidebar" },
-      createElement("div", { class: "sidebar-brand" }, "\u2756 OpenClaw"),
-      createElement("nav", { class: "sidebar-nav" },
-        ...NAV.map(n => createElement("a", {
-          class: "sidebar-link" + (route === n.id ? " active" : ""),
-          href: "#" + n.id,
-          onclick: (e) => { e.preventDefault(); navigate(n.id); }
-        }, n.label)))),
-    createElement("div", { class: "main-content" },
-      createElement("div", { class: "topbar" },
-        createElement("span", { class: "text-sm text-gray-400" }, "OpenClaw Studio"),
-        createElement("div", { class: "flex items-center gap-2" },
-          createElement("span", { class: "status-dot " + (STORE.connected ? "online" : "offline") }),
-          createElement("span", { class: "text-sm" }, STORE.connected ? "Connected" : "Disconnected"))),
-      createElement("div", { class: "page-area", id: "page-content" })));
+  const vdom = createElement("div", null,
+    createElement("div", { id: "oc-header" }),
+    createElement("div", { class: "app-layout", style: "height:calc(100vh - 41px)" },
+      createElement("div", { class: "sidebar-area", id: "oc-sidebar" }),
+      createElement("div", { class: "main-area", id: "oc-main" },
+        createElement("div", { class: "chat-area", id: "oc-chat", style: "display:none" }),
+        createElement("div", { id: "oc-gateway", style: "display:none;flex:1;overflow-y:auto" })
+      ),
+      createElement("div", { class: "inspect-area", id: "oc-inspect", style: "display:none" })
+    ),
+    createElement("div", { id: "oc-modal" })
+  );
   applyDiff(app, vdom);
-
-  NAV.forEach(n => {
-    const link = app.querySelector('a[href="#' + n.id + '"]');
-    if (link && !link.querySelector("svg")) {
-      link.prepend(svgIcon(n.icon));
-    }
-  });
+  els = {
+    header: document.getElementById("oc-header"),
+    sidebar: document.getElementById("oc-sidebar"),
+    main: document.getElementById("oc-main"),
+    chat: document.getElementById("oc-chat"),
+    gateway: document.getElementById("oc-gateway"),
+    inspect: document.getElementById("oc-inspect"),
+    modal: document.getElementById("oc-modal"),
+  };
 }
 
-async function renderPage(route) {
-  renderShell(route);
-  const container = document.getElementById("page-content");
-  const page = await loadPage(route);
-  page.render(container);
+function renderAll() {
+  renderHeader(els.header);
+  renderSidebar(els.sidebar, () => openModal(els.modal));
+  if (state.showConnectionScreen && state.gatewayStatus !== "connected") {
+    els.chat.style.display = "none";
+    els.gateway.style.display = "flex";
+    renderGateway(els.gateway);
+  } else {
+    els.chat.style.display = "flex";
+    els.gateway.style.display = "none";
+    renderChat(els.chat);
+  }
+  if (state.showInspectPanel) {
+    els.inspect.style.display = "block";
+    renderInspect(els.inspect);
+  } else {
+    els.inspect.style.display = "none";
+  }
+  renderModal(els.modal);
 }
 
-initRouter();
-onRouteChange(renderPage);
-renderPage(getRoute());
+document.documentElement.classList.toggle("dark", state.theme === "dark");
+mount();
+dispatch({ type: "hydrateAgents", agents: DEMO_AGENTS });
+initGateway();
+subscribe(renderAll);
+renderAll();
