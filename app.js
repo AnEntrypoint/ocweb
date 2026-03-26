@@ -6,6 +6,7 @@ import { render as renderChat } from "./components/agent-chat-panel.js";
 import { render as renderInspect } from "./components/agent-inspect-panels.js";
 import { render as renderGateway, init as initGateway } from "./components/gateway-connect.js";
 import { render as renderModal, open as openModal } from "./components/agent-create-modal.js";
+import { init as initCtx } from "./components/context-menu.js";
 
 const DEMO_AGENTS = [
   { agentId: "agent-research", name: "research-bot", sessionKey: uid(), avatarSeed: "research-bot", model: "claude-sonnet-4", sessionExecHost: "sandbox", sessionExecSecurity: "deny", sessionExecAsk: "on-miss" },
@@ -27,7 +28,8 @@ function mount() {
       ),
       createElement("div", { class: "inspect-area", id: "oc-inspect", style: "display:none" })
     ),
-    createElement("div", { id: "oc-modal" })
+    createElement("div", { id: "oc-modal" }),
+    createElement("div", { id: "oc-ctx" })
   );
   applyDiff(app, vdom);
   els = {
@@ -64,6 +66,7 @@ function renderAll() {
 
 document.documentElement.classList.toggle("dark", state.theme === "dark");
 mount();
+initCtx(document.getElementById("oc-ctx"));
 dispatch({ type: "hydrateAgents", agents: DEMO_AGENTS });
 initGateway();
 subscribe(renderAll);

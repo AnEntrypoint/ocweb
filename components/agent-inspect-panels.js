@@ -43,7 +43,7 @@ function renderSettings(el) {
     renderSelect("Ask mode", agent.sessionExecAsk || "on-miss", ASK_MODES, (v) => patch({ sessionExecAsk: v })),
     renderSwitch("Tool calling", agent.toolCallingEnabled, () => patch({ toolCallingEnabled: !agent.toolCallingEnabled })),
     renderSwitch("Show thinking traces", agent.showThinkingTraces, () => patch({ showThinkingTraces: !agent.showThinkingTraces })),
-    createElement("div", { style: "border-top:1px solid color-mix(in oklch,var(--border) 66%,transparent);padding-top:14px;display:flex;flex-direction:column;gap:8px" },
+    createElement("div", { style: "box-shadow:0 -1px 0 color-mix(in oklch,var(--surface-3) 60%,transparent);padding-top:14px;display:flex;flex-direction:column;gap:8px" },
       createElement("button", { class: "ui-btn-secondary", style: "width:100%;font-size:12px", onclick: () => {
         dispatch({ type: "updateAgent", agentId: agent.agentId, patch: { outputLines: [], streamText: null, thinkingTrace: null, lastResult: null, draft: "", status: "idle" } });
       }}, "Reset session"),

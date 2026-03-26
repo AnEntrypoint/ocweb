@@ -44,7 +44,7 @@ function render(el) {
     ),
     createElement("div", { style: "display:grid;gap:10px;grid-template-columns:repeat(3,1fr)" },
       ...SCENARIOS.map(sc => createElement("button", {
-        class: "ui-card", style: "text-align:left;padding:12px 16px;cursor:pointer;transition:border-color 150ms" + (selectedScenario === sc.id ? ";border-color:color-mix(in oklch,var(--primary) 60%,transparent)" : ""),
+        class: "ui-card", style: "text-align:left;padding:12px 16px;cursor:pointer;transition:border-color 150ms" + (selectedScenario === sc.id ? ";box-shadow:inset 0 0 0 2px color-mix(in oklch,var(--primary) 40%,transparent)" : ""),
         onclick: () => { selectedScenario = sc.id; render(el); }
       },
         createElement("p", { style: "font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:0.06em;color:var(--muted-foreground)" }, sc.title),

@@ -33,7 +33,7 @@ function render(el) {
     onclick: (e) => { if (e.target === e.currentTarget && !modalState.busy) close(el); }
   },
     createElement("div", { class: "ui-panel", style: "width:100%;max-width:520px", onclick: (e) => e.stopPropagation() },
-      createElement("div", { style: "display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid color-mix(in oklch,var(--border) 35%,transparent);padding:20px 24px" },
+      createElement("div", { style: "display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 0 color-mix(in oklch,var(--surface-3) 40%,transparent);padding:20px 24px" },
         createElement("div", null,
           createElement("div", { style: "font-family:var(--font-mono);font-size:11px;font-weight:600;letter-spacing:0.06em;color:var(--muted-foreground)" }, "New agent"),
           createElement("div", { style: "margin-top:4px;font-size:16px;font-weight:600;color:var(--foreground)" }, "Launch agent"),
@@ -47,13 +47,13 @@ function render(el) {
           createElement("input", { class: "ui-input", style: "display:block;width:100%;margin-top:4px", value: modalState.name, oninput: (e) => { modalState.name = e.target.value; } })
         ),
         createElement("div", { style: "font-size:11px;color:var(--muted-foreground);margin-top:-8px" }, "You can rename this agent from the main chat header."),
-        createElement("div", { style: "display:grid;justify-items:center;gap:8px;border-top:1px solid color-mix(in oklch,var(--border) 40%,transparent);padding-top:12px" },
+        createElement("div", { style: "display:grid;justify-items:center;gap:8px;box-shadow:0 -1px 0 color-mix(in oklch,var(--surface-3) 40%,transparent);padding-top:12px" },
           createElement("div", { style: "font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--muted-foreground)" }, "Choose avatar"),
           createElement("img", { src: avatarSrc, width: "64", height: "64", style: "border-radius:var(--radius-small)" }),
           createElement("button", { class: "ui-btn-secondary", style: "font-size:12px;gap:6px;display:inline-flex;align-items:center", onclick: () => { modalState.avatarSeed = uid(); render(el); }, disabled: modalState.busy }, "\u21BB Shuffle")
         )
       ),
-      createElement("div", { style: "display:flex;align-items:center;justify-content:space-between;border-top:1px solid color-mix(in oklch,var(--border) 45%,transparent);padding:16px 24px" },
+      createElement("div", { style: "display:flex;align-items:center;justify-content:space-between;box-shadow:0 -1px 0 color-mix(in oklch,var(--surface-3) 45%,transparent);padding:16px 24px" },
         createElement("div", { style: "font-size:11px;color:var(--muted-foreground)" }, "Authority can be configured after launch."),
         createElement("button", { class: "ui-btn-primary", style: "font-size:11px", onclick: () => submit(el), disabled: !modalState.name.trim() || modalState.busy }, modalState.busy ? "Launching..." : "Launch agent")
       )

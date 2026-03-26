@@ -1,6 +1,7 @@
 import { createElement, applyDiff } from "webjsx";
 import { state, dispatch, getFilteredAgents } from "../store.js";
 import { avatarDataUrl } from "../avatar.js";
+import { show as showCtx } from "./context-menu.js";
 
 const FILTERS = [
   { value: "all", label: "All" },
@@ -12,14 +13,31 @@ const STATUS_BADGE = { idle: "ui-badge-status-idle", running: "ui-badge-status-r
 const STATUS_LABEL = { idle: "Idle", running: "Running", error: "Error" };
 
 let onCreateCb = null;
+let rootEl = null;
+
+function agentContextMenu(e, agent) {
+  showCtx(e, [
+    { icon: "\u270F", label: "Rename", action: () => {
+      const name = prompt("Rename agent:", agent.name);
+      if (name?.trim()) dispatch({ type: "updateAgent", agentId: agent.agentId, patch: { name: name.trim() } });
+    }},
+    { icon: "\u{1F504}", label: "Reset session", action: () => {
+      dispatch({ type: "updateAgent", agentId: agent.agentId, patch: { outputLines: [], streamText: null, thinkingTrace: null, lastResult: null, draft: "", status: "idle" } });
+    }},
+    { icon: "\u{1F4CB}", label: "Copy ID", action: () => navigator.clipboard.writeText(agent.agentId).catch(() => {}) },
+    { sep: true },
+    { icon: "\u{1F5D1}", label: "Delete agent", danger: true, action: () => dispatch({ type: "removeAgent", agentId: agent.agentId }) },
+  ], document.getElementById("oc-ctx"));
+}
 
 function renderAgent(agent) {
   const selected = state.selectedAgentId === agent.agentId;
   const avatarSrc = avatarDataUrl(agent.avatarSeed || agent.agentId, 42);
   return createElement("button", {
     class: "ui-card" + (selected ? " ui-card-selected" : ""),
-    style: "position:relative;display:flex;width:100%;align-items:center;gap:10px;overflow:hidden;border-width:1px;padding:10px 12px;text-align:left;transition:background 150ms" + (!selected ? ";cursor:pointer" : ""),
-    onclick: () => dispatch({ type: "selectAgent", agentId: agent.agentId })
+    style: "position:relative;display:flex;width:100%;align-items:center;gap:10px;overflow:hidden;padding:10px 12px;text-align:left;transition:background 150ms,box-shadow 150ms" + (!selected ? ";cursor:pointer" : ""),
+    onclick: () => dispatch({ type: "selectAgent", agentId: agent.agentId }),
+    oncontextmenu: (e) => agentContextMenu(e, agent)
   },
     selected ? createElement("span", { class: "ui-card-select-indicator", style: "opacity:1" }) : null,
     createElement("img", { src: avatarSrc, width: "42", height: "42", style: "border-radius:var(--radius-small);flex-shrink:0" + (selected ? ";box-shadow:0 0 0 2px color-mix(in oklch,var(--primary) 36%,transparent)" : "") }),
@@ -35,6 +53,7 @@ function renderAgent(agent) {
 }
 
 function render(el, onCreate) {
+  rootEl = el;
   if (onCreate) onCreateCb = onCreate;
   const agents = getFilteredAgents();
   const vdom = createElement("aside", { class: "glass-panel fade-up-delay", style: "display:flex;height:100%;width:100%;flex-direction:column;gap:10px;background:var(--sidebar);padding:12px" },
