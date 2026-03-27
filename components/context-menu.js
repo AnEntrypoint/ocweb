@@ -52,8 +52,8 @@ function render() {
     btn.className = "ui-context-menu-item" + (item.danger ? " danger" : "");
     if (item.icon) {
       const icon = document.createElement("span");
-      icon.style.cssText = "opacity:.7;font-size:14px";
-      icon.textContent = item.icon;
+      icon.style.cssText = "opacity:.7;display:inline-flex;align-items:center";
+      icon.innerHTML = item.icon;
       btn.appendChild(icon);
     }
     btn.appendChild(document.createTextNode(item.label));

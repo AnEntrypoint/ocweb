@@ -1,5 +1,6 @@
 import { createElement, applyDiff } from "webjsx";
 import { saveSettings } from "../db.js";
+import { iconHtml } from "../icons.js";
 import { fetchModels } from "../llm.js";
 
 let draftKey = "", draftOpenai = "", testing = false, testResult = null;
@@ -57,7 +58,7 @@ function render(actor, el) {
     ctx.models.length > 0 ? h("div", { class: "ui-card", style: "padding:16px" },
       h("div", { style: "font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:0.06em;color:var(--muted-foreground);margin-bottom:8px" }, "AVAILABLE MODELS (" + ctx.models.length + ")"),
       h("div", { style: "display:flex;flex-wrap:wrap;gap:6px" },
-        ...ctx.models.map(m => h("span", { class: "ui-badge", style: "background:var(--surface-2);color:var(--foreground);font-size:10px" }, (m.provider === "anthropic" ? "\u{1F980} " : "\u{1F916} ") + m.name))
+        ...ctx.models.map(m => h("span", { class: "ui-badge", style: "background:var(--surface-2);color:var(--foreground);font-size:10px" }, (m.provider === "anthropic" ? "\u{1F980} " : "") + m.name))
       )
     ) : null,
     ctx.modelsLoading ? h("div", { style: "text-align:center;color:var(--muted-foreground);font-size:13px" }, "Loading models...") : null,

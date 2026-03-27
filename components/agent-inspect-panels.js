@@ -1,5 +1,6 @@
 import { createElement, applyDiff } from "webjsx";
 import { getSelectedAgent } from "../machines.js";
+import { iconHtml } from "../icons.js";
 import { getAgentFile, setAgentFile, saveAgent } from "../db.js";
 import { startJob, stopJob, getJobStatus } from "../cron.js";
 import { runAgent } from "../agent-runner.js";
@@ -37,7 +38,7 @@ async function renderSettings(actor, el) {
       h("div", null,
         h("div", { style: "font-family:var(--font-mono);font-size:9px;font-weight:500;color:var(--muted-foreground);opacity:.58" }, "SETTINGS"),
         h("div", { style: "font-size:1.1rem;font-weight:600;color:var(--foreground)" }, agent.name)),
-      h("button", { class: "ui-btn-icon", onclick: () => actor.send({ type: "SHOW_PANEL", panel: null }) }, "\u2715")),
+      h("button", { class: "ui-btn-icon", onclick: () => actor.send({ type: "SHOW_PANEL", panel: null }) , innerHTML: iconHtml("x", 14) })),
     renderSelect("Model", agent.model, models, (v) => patch({ model: v })),
     renderSelect("Security", agent.sessionExecSecurity, SECURITY_LEVELS, (v) => patch({ sessionExecSecurity: v })),
     renderSelect("Ask mode", agent.sessionExecAsk, ASK_MODES, (v) => patch({ sessionExecAsk: v })),
@@ -69,7 +70,7 @@ async function renderBrain(actor, el) {
       h("div", null,
         h("div", { style: "font-family:var(--font-mono);font-size:9px;font-weight:500;color:var(--muted-foreground);opacity:.58" }, "BRAIN"),
         h("div", { style: "font-size:1.1rem;font-weight:600;color:var(--foreground)" }, agent.name)),
-      h("button", { class: "ui-btn-icon", onclick: () => actor.send({ type: "SHOW_PANEL", panel: null }) }, "\u2715")),
+      h("button", { class: "ui-btn-icon", onclick: () => actor.send({ type: "SHOW_PANEL", panel: null }) , innerHTML: iconHtml("x", 14) })),
     h("div", { style: "font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--muted-foreground);letter-spacing:0.05em" }, "SYSTEM PROMPT (CLAUDE.md)"),
     h("textarea", { class: "ui-input", style: "width:100%;min-height:120px;font-family:var(--font-mono);font-size:12px;resize:vertical", value: claudeMd || "",
       onblur: (e) => setAgentFile(agent.agentId, "CLAUDE.md", e.target.value) }),

@@ -2,6 +2,7 @@ import { createElement, applyDiff } from "webjsx";
 import { getFilteredAgents } from "../machines.js";
 import { avatarDataUrl } from "../avatar.js";
 import { show as showCtx } from "./context-menu.js";
+import { iconHtml } from "../icons.js";
 
 const FILTERS = [{ value: "all", label: "All" }, { value: "running", label: "Running" }, { value: "approvals", label: "Approvals" }];
 const STATUS_BADGE = { idle: "ui-badge-status-idle", running: "ui-badge-status-running", error: "ui-badge-status-error" };
@@ -11,17 +12,17 @@ let onCreateCb = null;
 
 function agentContextMenu(e, agent, actor) {
   showCtx(e, [
-    { icon: "\u270F", label: "Rename", action: () => {
+    { icon: iconHtml("pencil", 14), label: "Rename", action: () => {
       const name = prompt("Rename agent:", agent.name);
       if (name?.trim()) actor.send({ type: "UPDATE_AGENT", agentId: agent.agentId, patch: { name: name.trim() } });
     }},
-    { icon: "\u{1F504}", label: "Reset session", action: () => {
+    { icon: iconHtml("refresh", 14), label: "Reset session", action: () => {
       actor.send({ type: "UPDATE_AGENT", agentId: agent.agentId, patch: { outputLines: [], streamText: null, thinkingTrace: null, lastResult: null, draft: "", status: "idle" } });
       import("../db.js").then(db => db.saveHistory(agent.agentId, []));
     }},
-    { icon: "\u{1F4CB}", label: "Copy ID", action: () => navigator.clipboard.writeText(agent.agentId).catch(() => {}) },
+    { icon: iconHtml("clipboard", 14), label: "Copy ID", action: () => navigator.clipboard.writeText(agent.agentId).catch(() => {}) },
     { sep: true },
-    { icon: "\u{1F5D1}", label: "Delete agent", danger: true, action: () => {
+    { icon: iconHtml("trash", 14), label: "Delete agent", danger: true, action: () => {
       actor.send({ type: "REMOVE_AGENT", agentId: agent.agentId });
       import("../db.js").then(db => db.deleteAgent(agent.agentId));
     }},
@@ -56,10 +57,11 @@ function render(actor, el, onCreate) {
   const ctx = actor.getSnapshot().context;
   const agents = getFilteredAgents(ctx);
   const h = createElement;
+  const I = (name, sz) => h("span", { innerHTML: iconHtml(name, sz || 14), style: "display:inline-flex;align-items:center" });
   const vdom = h("aside", { class: "glass-panel fade-up-delay", style: "display:flex;height:100%;width:100%;flex-direction:column;gap:10px;background:var(--sidebar);padding:12px" },
     h("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px" },
       h("p", { style: "font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--foreground)" }, "Agents (" + ctx.agents.length + ")"),
-      h("button", { class: "ui-btn-primary", style: "padding:6px 12px;font-size:11px", onclick: () => onCreateCb && onCreateCb() }, "New agent")
+      h("button", { class: "ui-btn-primary", style: "padding:6px 12px;font-size:11px", onclick: () => onCreateCb && onCreateCb() }, I("plus", 13), " New agent")
     ),
     h("div", { class: "ui-segment", style: "grid-template-columns:repeat(3,1fr)" },
       ...FILTERS.map(f => h("button", {

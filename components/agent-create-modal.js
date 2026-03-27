@@ -1,4 +1,5 @@
 import { createAgentConfig, uid } from "../machines.js";
+import { iconHtml } from "../icons.js";
 import { avatarDataUrl } from "../avatar.js";
 import { saveAgent } from "../db.js";
 
