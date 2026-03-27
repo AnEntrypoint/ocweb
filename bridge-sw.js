@@ -7,7 +7,7 @@ self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', e => e.waitUntil(
   self.clients.claim().then(() =>
     self.clients.matchAll({ type: 'window' }).then(clients =>
-      clients.forEach(c => { if (!new URL(c.url).searchParams.has('coi')) c.navigate(c.url + (c.url.includes('?') ? '&' : '?') + 'coi=1') })
+      clients.forEach(c => { if (!new URL(c.url).searchParams.has('coi-reloaded')) c.navigate(c.url + (c.url.includes('?') ? '&' : '?') + 'coi-reloaded=1') })
     )
   )
 ))
