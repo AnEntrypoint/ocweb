@@ -41,7 +41,7 @@ function mount() {
 function renderAll() {
   const ctx = actor.getSnapshot().context;
   renderHeader(actor, els.header);
-  renderSidebar(actor, els.sidebar, () => openModal(els.modal));
+  renderSidebar(actor, els.sidebar, () => openModal(actor, els.modal));
   if (ctx.showApiSetup) {
     els.chat.style.display = "none";
     els.apiSetup.style.display = "flex";

@@ -1,0 +1,15 @@
+{
+  "name": "opencrabs-companion",
+  "version": "1.0.0",
+  "description": "OpenCrabs companion CLI — provides shell, filesystem, and git access to the browser app",
+  "main": "server.js",
+  "bin": {
+    "opencrabs-companion": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.0.0"
+  }
+}

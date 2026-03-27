@@ -1,4 +1,5 @@
 import { createElement, applyDiff } from "webjsx";
+import { isConnected as companionConnected } from "../companion-client.js";
 
 let menuOpen = false;
 
@@ -12,6 +13,7 @@ function render(actor, el) {
       h("p", { style: "font-size:14px;font-weight:600;color:var(--foreground);letter-spacing:0.01em" }, "\u{1F980} OpenCrabs"),
       h("div", { style: "display:flex;align-items:center;justify-content:flex-end;gap:6px" },
         h("span", { class: "ui-chip " + (hasKey ? "ui-badge-status-connected" : "ui-badge-status-disconnected"), style: "font-size:9px" }, hasKey ? "API Ready" : "No API Key"),
+        companionConnected() ? h("span", { class: "ui-chip ui-badge-status-running", style: "font-size:9px" }, "CLI") : null,
         h("button", { class: "ui-btn-icon", onclick: () => {
           actor.send({ type: "SET_THEME", theme: ctx.theme === "dark" ? "light" : "dark" });
           document.documentElement.classList.toggle("dark", ctx.theme !== "dark");

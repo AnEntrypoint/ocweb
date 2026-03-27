@@ -1,5 +1,6 @@
 import { getAgentFile, setAgentFile } from "./db.js";
 import { navigate, navigateProxy, snapshot, click, fill, evalJs, getText, getUrl } from "./browser-tools.js";
+import { isConnected, shellExec, fsRead, fsWrite, fsList, gitStatus, gitLog, gitDiff } from "./companion-client.js";
 
 const TOOL_DEFS = [
   { name: "read_file", description: "Read a file from the agent's virtual filesystem", input_schema: { type: "object", properties: { path: { type: "string", description: "File path to read" } }, required: ["path"] } },
@@ -16,6 +17,13 @@ const TOOL_DEFS = [
   { name: "browser_eval", description: "Execute JavaScript in the embedded browser iframe context and return the result", input_schema: { type: "object", properties: { code: { type: "string", description: "JavaScript code to evaluate" } }, required: ["code"] } },
   { name: "browser_get_text", description: "Get text content of an element in the embedded browser. Omit selector for full page text.", input_schema: { type: "object", properties: { selector: { type: "string", description: "CSS selector (optional, defaults to body)" } } } },
   { name: "browser_get_url", description: "Get the current URL of the embedded browser", input_schema: { type: "object", properties: {} } },
+  { name: "shell_exec", description: "Execute a shell command on the local machine (requires companion CLI running)", input_schema: { type: "object", properties: { command: { type: "string", description: "Shell command to execute" }, cwd: { type: "string", description: "Working directory (optional)" } }, required: ["command"] } },
+  { name: "real_fs_read", description: "Read a file from the real filesystem (requires companion CLI)", input_schema: { type: "object", properties: { path: { type: "string", description: "Absolute or relative file path" } }, required: ["path"] } },
+  { name: "real_fs_write", description: "Write a file to the real filesystem (requires companion CLI)", input_schema: { type: "object", properties: { path: { type: "string", description: "File path" }, content: { type: "string", description: "Content to write" } }, required: ["path", "content"] } },
+  { name: "real_fs_list", description: "List files in a directory on the real filesystem (requires companion CLI)", input_schema: { type: "object", properties: { path: { type: "string", description: "Directory path (defaults to CWD)" } } } },
+  { name: "git_status", description: "Get git status of the working directory (requires companion CLI)", input_schema: { type: "object", properties: {} } },
+  { name: "git_log", description: "Get recent git log (requires companion CLI)", input_schema: { type: "object", properties: {} } },
+  { name: "git_diff", description: "Get git diff (requires companion CLI)", input_schema: { type: "object", properties: {} } },
 ];
 
 function getToolDefs(enabledTools) {
@@ -40,6 +48,13 @@ async function executeTool(agentId, name, input) {
       case "browser_eval": return evalJs(input.code);
       case "browser_get_text": return getText(input.selector);
       case "browser_get_url": return getUrl();
+      case "shell_exec": { if (!isConnected()) return "Companion CLI not running. Start it with: npx opencrabs-companion"; const r = await shellExec(input.command, input.cwd); return (r.stdout || "") + (r.stderr ? "\nSTDERR: " + r.stderr : "") + "\n[exit " + r.exitCode + "]"; }
+      case "real_fs_read": { if (!isConnected()) return "Companion CLI not running."; const r = await fsRead(input.path); return r.content; }
+      case "real_fs_write": { if (!isConnected()) return "Companion CLI not running."; await fsWrite(input.path, input.content); return "Written " + input.content.length + " chars to " + input.path; }
+      case "real_fs_list": { if (!isConnected()) return "Companion CLI not running."; const r = await fsList(input.path); return r.map(e => (e.type === "dir" ? "📁 " : "📄 ") + e.name).join("\n"); }
+      case "git_status": { if (!isConnected()) return "Companion CLI not running."; const r = await gitStatus(); return r.stdout || "(clean)"; }
+      case "git_log": { if (!isConnected()) return "Companion CLI not running."; const r = await gitLog(); return r.stdout; }
+      case "git_diff": { if (!isConnected()) return "Companion CLI not running."; const r = await gitDiff(); return r.stdout || "(no changes)"; }
       default: return "Unknown tool: " + name;
     }
   } catch (e) { return "Tool error: " + e.message; }

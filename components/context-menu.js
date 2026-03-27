@@ -1,59 +1,80 @@
 import { createElement, applyDiff } from "webjsx";
 
-let menuState = { open: false, x: 0, y: 0, items: [], el: null };
-
-function onKeyDown(e) { if (e.key === "Escape") hide(); }
-function onClickOutside() { hide(); }
+let menuEl = null;
+let menuOpen = false;
+let menuX = 0;
+let menuY = 0;
+let menuItems = [];
 
 function show(e, items, el) {
   e.preventDefault();
   e.stopPropagation();
+  menuEl = el;
+  menuOpen = true;
+  menuItems = items;
   const vw = window.innerWidth, vh = window.innerHeight;
-  let x = e.clientX, y = e.clientY;
-  if (x + 200 > vw) x = vw - 210;
-  if (y + items.length * 38 + 16 > vh) y = vh - items.length * 38 - 20;
-  menuState = { open: true, x, y, items, el };
+  menuX = e.clientX;
+  menuY = e.clientY;
+  if (menuX + 200 > vw) menuX = vw - 210;
+  if (menuY + items.length * 38 + 16 > vh) menuY = vh - items.length * 38 - 20;
   render();
-  requestAnimationFrame(() => {
-    document.addEventListener("keydown", onKeyDown);
-    document.addEventListener("mousedown", onClickOutside);
-    document.addEventListener("contextmenu", onClickOutside);
-  });
 }
 
 function hide() {
-  if (!menuState.open) return;
-  document.removeEventListener("keydown", onKeyDown);
-  document.removeEventListener("mousedown", onClickOutside);
-  document.removeEventListener("contextmenu", onClickOutside);
-  menuState.open = false;
+  menuOpen = false;
+  menuItems = [];
   render();
 }
 
 function render() {
-  if (!menuState.el) return;
-  if (!menuState.open) { applyDiff(menuState.el, createElement("div", null)); return; }
-  const vdom = createElement("div", {
-    style: "position:fixed;inset:0;z-index:9998",
-    onmousedown: (e) => { if (e.target === e.currentTarget) { e.preventDefault(); hide(); } }
-  },
-    createElement("div", {
-      class: "ui-context-menu",
-      style: "left:" + menuState.x + "px;top:" + menuState.y + "px",
-      onmousedown: (e) => e.stopPropagation()
-    },
-      ...menuState.items.map((item) => {
-        if (item.sep) return createElement("div", { class: "ui-context-menu-sep" });
-        return createElement("button", {
-          class: "ui-context-menu-item" + (item.danger ? " danger" : ""),
-          onclick: () => { hide(); if (item.action) item.action(); }
-        }, item.icon ? createElement("span", { style: "opacity:.7;font-size:14px" }, item.icon) : null, item.label);
-      })
-    )
-  );
-  applyDiff(menuState.el, vdom);
+  if (!menuEl) return;
+  if (!menuOpen) {
+    menuEl.innerHTML = "";
+    return;
+  }
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;z-index:9998";
+  overlay.addEventListener("click", () => hide());
+  overlay.addEventListener("contextmenu", (e) => { e.preventDefault(); hide(); });
+
+  const menu = document.createElement("div");
+  menu.className = "ui-context-menu";
+  menu.style.cssText = "position:fixed;left:" + menuX + "px;top:" + menuY + "px;z-index:9999";
+
+  menuItems.forEach(item => {
+    if (item.sep) {
+      const sep = document.createElement("div");
+      sep.className = "ui-context-menu-sep";
+      menu.appendChild(sep);
+      return;
+    }
+    const btn = document.createElement("button");
+    btn.className = "ui-context-menu-item" + (item.danger ? " danger" : "");
+    if (item.icon) {
+      const icon = document.createElement("span");
+      icon.style.cssText = "opacity:.7;font-size:14px";
+      icon.textContent = item.icon;
+      btn.appendChild(icon);
+    }
+    btn.appendChild(document.createTextNode(item.label));
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hide();
+      if (item.action) item.action();
+    });
+    menu.appendChild(btn);
+  });
+
+  menuEl.innerHTML = "";
+  menuEl.appendChild(overlay);
+  menuEl.appendChild(menu);
+
+  const escHandler = (e) => {
+    if (e.key === "Escape") { hide(); window.removeEventListener("keydown", escHandler, true); }
+  };
+  window.addEventListener("keydown", escHandler, true);
 }
 
-function init(el) { menuState.el = el; }
+function init(el) { menuEl = el; }
 
 export { show, hide, init };
