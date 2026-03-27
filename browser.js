@@ -31,8 +31,7 @@ export function snapshot() {
     const href = el.href ? ' href="'+el.href.slice(0,60)+'"' : ''
     items.push('@r'+i+' ['+tag+href+val+']'+(txt?' "'+txt+'"':''))
   })
-  return items.length ? items.join('
-') : 'no interactive elements'
+  return items.length ? items.join('\n') : 'no interactive elements'
 }
 
 export function click(ref) {
