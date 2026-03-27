@@ -45,13 +45,15 @@ function render(actor, el) {
     ),
     h("div", { class: "ui-card", style: "padding:20px" },
       h("div", { style: "font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:0.06em;color:var(--muted-foreground);margin-bottom:12px" }, "API KEYS"),
-      h("label", { style: "display:block;font-size:12px;font-weight:500;color:var(--foreground);margin-bottom:4px" }, "Anthropic API Key"),
-      h("input", { class: "ui-input", type: "password", style: "width:100%;margin-bottom:12px", value: draftKey, placeholder: "sk-ant-...", oninput: (e) => { draftKey = e.target.value; } }),
-      h("label", { style: "display:block;font-size:12px;font-weight:500;color:var(--foreground);margin-bottom:4px" }, "OpenAI API Key (optional)"),
-      h("input", { class: "ui-input", type: "password", style: "width:100%;margin-bottom:16px", value: draftOpenai, placeholder: "sk-...", oninput: (e) => { draftOpenai = e.target.value; } }),
-      h("div", { style: "display:flex;gap:8px;flex-wrap:wrap" },
-        h("button", { class: "ui-btn-primary", style: "font-size:12px", disabled: !draftKey.trim(), onclick: () => doSave(actor, el) }, "Save & Load Models"),
-        h("button", { class: "ui-btn-secondary", style: "font-size:12px", disabled: testing || !draftKey.trim(), onclick: () => doTest(actor, el) }, testing ? "Testing..." : "Test Connection")
+      h("form", { autocomplete: "off", onsubmit: "return false" },
+        h("label", { style: "display:block;font-size:12px;font-weight:500;color:var(--foreground);margin-bottom:4px" }, "Anthropic API Key"),
+        h("input", { class: "ui-input", type: "password", style: "width:100%;margin-bottom:12px", value: draftKey, placeholder: "sk-ant-...", oninput: (e) => { draftKey = e.target.value; } }),
+        h("label", { style: "display:block;font-size:12px;font-weight:500;color:var(--foreground);margin-bottom:4px" }, "OpenAI API Key (optional)"),
+        h("input", { class: "ui-input", type: "password", style: "width:100%;margin-bottom:16px", value: draftOpenai, placeholder: "sk-...", oninput: (e) => { draftOpenai = e.target.value; } }),
+        h("div", { style: "display:flex;gap:8px;flex-wrap:wrap" },
+          h("button", { class: "ui-btn-primary", type: "button", style: "font-size:12px", disabled: !draftKey.trim(), onclick: () => doSave(actor, el) }, "Save & Load Models"),
+          h("button", { class: "ui-btn-secondary", type: "button", style: "font-size:12px", disabled: testing || !draftKey.trim(), onclick: () => doTest(actor, el) }, testing ? "Testing..." : "Test Connection")
+        )
       )
     ),
     testResult ? h("div", { class: testResult.kind === "error" ? "ui-alert-danger" : "ui-card", style: "padding:10px 16px;font-size:13px" }, testResult.message) : null,

@@ -82,7 +82,7 @@ export function mount(el, actor) {
       <button id="sh-go">Go</button>
       <button id="sh-snap" class="sh-ghost">Snapshot</button>
     </div>
-    <iframe id="sh-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+    <iframe id="sh-frame" sandbox="allow-scripts allow-forms allow-popups allow-modals"></iframe>
   </div>
 </div>`
 
@@ -113,7 +113,7 @@ export function mount(el, actor) {
     new ResizeObserver(() => fit.fit()).observe(termEl)
     if (wcStatus() !== 'ready') {
       term.writeln('\x1b[33mWaiting for WebContainer...\x1b[0m')
-      const ok = await new Promise(resolve => { const unsub = onWcStatus(s => { if (s === 'ready') { unsub(); resolve(true) } else if (s === 'unavailable') { unsub(); resolve(false) } }) })
+      const ok = await new Promise(resolve => { let unsub; unsub = onWcStatus(s => { if (s === 'ready') { unsub?.(); resolve(true) } else if (s === 'unavailable') { unsub?.(); resolve(false) } }) })
       if (!ok) { term.writeln('\x1b[31mWebContainer unavailable (requires cross-origin isolation)\x1b[0m'); return }
     }
     const shell = await spawnShell(data => term.write(data))
