@@ -29,8 +29,8 @@ function renderSwitch(label, value, onChange) {
 function renderSelect(label, value, options, onChange) {
   return createElement("div", { style: "display:flex;flex-direction:column;gap:4px" },
     createElement("label", { style: "font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:0.05em;color:var(--muted-foreground)" }, label),
-    createElement("select", { class: "ui-input", style: "padding:6px 10px", value, onchange: (e) => onChange(e.target.value) },
-      ...options.map(o => createElement("option", { value: typeof o === "string" ? o : o.id }, typeof o === "string" ? o : o.name)))
+    createElement("select", { class: "ui-input", style: "padding:6px 10px", onchange: (e) => onChange(e.target.value) },
+      ...options.map(o => { const v = typeof o === "string" ? o : o.id; const n = typeof o === "string" ? o : o.name; return createElement("option", { value: v, ...(v === value ? { selected: true } : {}) }, n); }))
   );
 }
 

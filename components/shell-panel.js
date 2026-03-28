@@ -1,4 +1,3 @@
-import { GoogleGenAI } from 'https://esm.sh/@google/genai@1.46.0'
 import { boot, runCli as wcRunCli, wcStatus, onWcStatus, onCdpReady, mountCdpRelay, spawnShell } from '../wc.js'
 import { renderBrowserPanel } from '../browser.js'
 
@@ -145,6 +144,8 @@ export function mount(el, actor) {
   async function runGemini(prompt) {
     const key=stor.get('geminiKey'); if(!key){appendLine('Gemini API key required','err');return}
     appendLine('you: '+prompt,'user')
+    const { GoogleGenAI } = await import('https://esm.sh/@google/genai@1.46.0').catch(()=>{appendLine('Failed to load Gemini SDK','err');return {}})
+    if(!GoogleGenAI){return}
     const ai=new GoogleGenAI({apiKey:key}); const stream=await ai.models.generateContentStream({model:GEMINI_MODEL,contents:prompt})
     let buf=''; const div=document.createElement('div'); div.className='sh-line sh-line-assistant'; $('sh-output').appendChild(div)
     for await(const chunk of stream){buf+=chunk.text||'';div.textContent=buf;$('sh-output').scrollTop=$('sh-output').scrollHeight}
