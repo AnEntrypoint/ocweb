@@ -91,7 +91,7 @@ export function mount(el, actor) {
 
   let _term = null
   let _termQueue = []
-  const appendTerm = (text) => { if (_term) _term.writeln(stripAnsi(text)); else _termQueue.push(text) }
+  const appendTerm = (text) => { if (_term) _term.write(text); else _termQueue.push(text) }
 
   let _xtermInited = false
   async function initXterm() {
@@ -108,7 +108,7 @@ export function mount(el, actor) {
     term.loadAddon(fit)
     term.open(termEl)
     // fit after element is visible in DOM
-    requestAnimationFrame(() => { fit.fit(); _term = term; _termQueue.forEach(t => term.writeln(t)); _termQueue = [] })
+    requestAnimationFrame(() => { fit.fit(); _term = term; _termQueue.forEach(t => term.write(t)); _termQueue = [] })
     new ResizeObserver(() => fit.fit()).observe(termEl)
     if (wcStatus() !== 'ready') {
       term.writeln('\x1b[33mWaiting for WebContainer...\x1b[0m')

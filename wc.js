@@ -29,7 +29,7 @@ export async function runCli(agent, prompt, onLine) {
   if (_status !== 'ready') { onLine({ type: 'err', text: 'WebContainer ' + _status }); return }
   try {
     const proc = await wc.spawn(cfg[0], [...cfg[1], prompt], {
-      env: { HOME: '/root', PATH: '/usr/local/bin:/usr/bin:/bin' }
+      env: { HOME: '/root', PATH: '/usr/local/bin:/usr/bin:/bin', npm_config_cache: '/tmp/npm-cache' }
     })
     proc.output.pipeTo(new WritableStream({ write(data) { onLine({ type: 'out', text: data }) } }))
     const code = await proc.exit
@@ -61,7 +61,7 @@ export async function wcExec(command, cwd) {
   if (!wc) return null
   try {
     let out = '', err = ''
-    const proc = await wc.spawn('sh', ['-c', command], { cwd: cwd || '/', env: { HOME: '/root', PATH: '/usr/local/bin:/usr/bin:/bin' } })
+    const proc = await wc.spawn('sh', ['-c', command], { cwd: cwd || '/', env: { HOME: '/root', PATH: '/usr/local/bin:/usr/bin:/bin', npm_config_cache: '/tmp/npm-cache' } })
     proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
     const code = await proc.exit
     return out + (err ? '\nSTDERR: ' + err : '') + '\n[exit ' + code + ']'
@@ -97,7 +97,7 @@ export async function spawnShell(onData) {
   try {
     const proc = await wc.spawn('jsh', [], {
       terminal: { cols: 80, rows: 24 },
-      env: { HOME: '/root', PATH: '/usr/local/bin:/usr/bin:/bin', TERM: 'xterm-color' }
+      env: { HOME: '/root', PATH: '/usr/local/bin:/usr/bin:/bin', TERM: 'xterm-color', npm_config_cache: '/tmp/npm-cache' }
     })
     proc.output.pipeTo(new WritableStream({ write(data) { onData(data) } }))
     return { input: proc.input, exit: proc.exit }
