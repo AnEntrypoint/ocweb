@@ -3,7 +3,6 @@ import { WebContainer } from 'https://esm.sh/@webcontainer/api'
 const AGENTS = {
   claude:   ['npx', ['-y','@anthropic-ai/claude-code','--dangerously-skip-permissions']],
   kilo:     ['npx', ['-y','@kilocode/cli','kilo']],
-  opencode: ['npx', ['-y','opencode-ai']],
 }
 
 let wc = null

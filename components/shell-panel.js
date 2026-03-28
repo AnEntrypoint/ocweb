@@ -66,7 +66,6 @@ export function mount(el, actor) {
         <optgroup label="WebContainer (in-browser)">
           <option value="claude">claude CLI</option>
           <option value="kilo">Kilo Code</option>
-          <option value="opencode">OpenCode</option>
         </optgroup>
       </select>
       <input id="sh-prompt" type="text" placeholder="Enter prompt…" autocomplete="off">
@@ -165,7 +164,7 @@ export function mount(el, actor) {
 
   async function runCli(agent, prompt) {
     appendLine('you: '+prompt,'user')
-    if(wcStatus()==='ready'){appendLine('[running '+agent+' — see Terminal tab]','info');appendTerm('--- '+agent+' ---','info');await wcRunCli(agent,prompt,evt=>{appendTerm(evt.text,evt.type);if(evt.type!=='raw')appendLine(evt.text,'assistant')});return}
+    if(wcStatus()==='ready'){appendLine('[running '+agent+' — see Terminal tab]','info');appendTerm('--- '+agent+' ---');await wcRunCli(agent,prompt,evt=>{appendTerm(evt.text);const t=evt.text.replace(/[\r\n]/g,'').trim();if(t&&!/^[\\|/\-]+$/.test(t))appendLine(evt.text,'assistant')});return}
     if(companion.status!=='connected'){appendLine('WebContainer unavailable and companion offline — run: node bin/serve.js','err');return}
     appendLine('[spawning '+agent+' via companion…]','info')
     const info=await companion.call('acp.sessions.new',{agent})
