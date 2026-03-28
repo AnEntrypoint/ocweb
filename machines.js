@@ -20,6 +20,7 @@ const appMachine = setup({
     models: [],
     modelsLoading: false,
     pendingApprovals: [],
+    _lastApprovalDecisions: {},
   },
   states: {
     running: {
@@ -39,7 +40,7 @@ const appMachine = setup({
         SET_MODELS: { actions: assign({ models: ({ event }) => event.models, modelsLoading: false }) },
         SET_MODELS_LOADING: { actions: assign({ modelsLoading: true }) },
         ADD_APPROVAL: { actions: assign({ pendingApprovals: ({ context, event }) => [...context.pendingApprovals, event.approval], agents: ({ context, event }) => context.agents.map(a => a.agentId === event.approval.agentId ? { ...a, awaitingUserInput: true } : a) }) },
-        RESOLVE_APPROVAL: { actions: assign({ pendingApprovals: ({ context, event }) => context.pendingApprovals.filter(a => a.id !== event.id), agents: ({ context, event }) => { const ap = context.pendingApprovals.find(a => a.id === event.id); if (!ap) return context.agents; const remaining = context.pendingApprovals.filter(a => a.id !== event.id && a.agentId === ap.agentId); return context.agents.map(a => a.agentId === ap.agentId ? { ...a, awaitingUserInput: remaining.length > 0 } : a); } }) },
+        RESOLVE_APPROVAL: { actions: assign({ _lastApprovalDecisions: ({ context, event }) => ({ ...context._lastApprovalDecisions, [event.id]: event.decision }), pendingApprovals: ({ context, event }) => context.pendingApprovals.filter(a => a.id !== event.id), agents: ({ context, event }) => { const ap = context.pendingApprovals.find(a => a.id === event.id); if (!ap) return context.agents; const remaining = context.pendingApprovals.filter(a => a.id !== event.id && a.agentId === ap.agentId); return context.agents.map(a => a.agentId === ap.agentId ? { ...a, awaitingUserInput: remaining.length > 0 } : a); } }) },
         MARK_ACTIVITY: { actions: assign({ agents: ({ context, event }) => context.agents.map(a => a.agentId !== event.agentId ? a : { ...a, lastActivityAt: Date.now(), hasUnseenActivity: context.selectedAgentId !== event.agentId }) }) },
       }
     }

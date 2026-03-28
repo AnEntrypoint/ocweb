@@ -91,7 +91,7 @@ function render(actor, el) {
     h("div", { style: "display:flex;align-items:center;gap:8px;padding:6px 12px;background:color-mix(in oklch,var(--surface-1) 92%,var(--surface-0));box-shadow:var(--shadow-2xs)" },
       h("div", { class: "ui-dot-status-" + (curUrl ? "connected" : "disconnected"), style: "width:7px;height:7px;flex-shrink:0" }),
       h("div", { style: "flex:1;font-family:var(--font-mono);font-size:11px;color:var(--muted-foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, curUrl || "No page loaded — agent will browse here")),
-    h("iframe", { id: "oc-browser-frame", style: "flex:1;border:0;background:white;border-radius:0 0 var(--radius-small) 0", sandbox: "allow-same-origin allow-scripts allow-forms allow-popups allow-modals" })
+    h("iframe", { id: "oc-browser-frame", style: "flex:1;border:0;background:white;border-radius:0 0 var(--radius-small) 0", sandbox: "allow-scripts allow-forms allow-popups allow-modals" })
   ) : null;
 
   const splitView = h("div", { style: "display:flex;flex:1;min-height:0" + (showBrowser ? ";gap:1px" : "") },

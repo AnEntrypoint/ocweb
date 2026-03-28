@@ -45,7 +45,7 @@ async function runAgent(actor, agentId, userMessage) {
     const updatedAgent = () => actor.getSnapshot().context.agents.find(a => a.agentId === agentId);
 
     try {
-      for await (const evt of streamFn(apiKey, history, { model: agent.model, system: systemPrompt, tools: tools.length ? tools : undefined, thinking: agent.showThinkingTraces, signal: controller.signal })) {
+      for await (const evt of streamFn(apiKey, history, { model: agent.model, system: systemPrompt, tools: tools.length ? tools : undefined, thinking: tools.length ? false : agent.showThinkingTraces, signal: controller.signal })) {
         if (evt.type === "error") {
           actor.send({ type: "UPDATE_AGENT", agentId, patch: { status: "error", streamText: null, outputLines: [...(updatedAgent()?.outputLines || []), "assistant: API Error " + evt.status + ": " + evt.message.slice(0, 200)] } });
           await saveHistory(agentId, history);
@@ -119,7 +119,7 @@ function waitForApproval(actor, approvalId) {
     const unsub = actor.subscribe(snap => {
       if (!snap.context.pendingApprovals.find(a => a.id === approvalId)) {
         unsub.unsubscribe();
-        resolve(snap.context._lastApprovalDecision || "allow-once");
+        resolve(snap.context._lastApprovalDecisions?.[approvalId] || "allow-once");
       }
     });
   });

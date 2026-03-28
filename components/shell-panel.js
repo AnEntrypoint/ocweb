@@ -1,7 +1,7 @@
 import { boot, runCli as wcRunCli, wcStatus, onWcStatus, onCdpReady, mountCdpRelay, spawnShell } from '../wc.js'
 import { renderBrowserPanel } from '../browser.js'
 
-const SW_PATH = '/bridge-sw.js'
+const SW_PATH = './bridge-sw.js'
 const RPC_URL = 'ws://127.0.0.1:9377'
 const GEMINI_MODEL = 'gemini-2.0-flash'
 const ANTHROPIC_MODEL = 'claude-opus-4-6'
@@ -13,7 +13,7 @@ function loadKeys() { return { anthropicApiKey: stor.get('anthropicKey'), openai
 
 async function registerSW() {
   if (!navigator.serviceWorker) return
-  try { await navigator.serviceWorker.register(SW_PATH, { scope: '/' }); navigator.serviceWorker.controller?.postMessage({ type: 'BRIDGE_CONFIG', config: loadKeys() }) } catch {}
+  try { await navigator.serviceWorker.register(SW_PATH, { scope: './' }); navigator.serviceWorker.controller?.postMessage({ type: 'BRIDGE_CONFIG', config: loadKeys() }) } catch {}
 }
 
 let _companion = null
