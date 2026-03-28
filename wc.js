@@ -59,6 +59,9 @@ async function setupNode() {
     const buf = await resp.arrayBuffer()
     await _dataDevice.writeFile('/node.tar.gz', new Uint8Array(buf))
     await cx.run('/bin/tar', ['-xz', '-C', '/usr/local', '--strip-components=1', '-f', '/data/node.tar.gz'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
+    await cx.run('/bin/ln', ['-sf', '../lib/node_modules/npm/bin/npm-cli.js', '/usr/local/bin/npm'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
+    await cx.run('/bin/ln', ['-sf', '../lib/node_modules/npm/bin/npx-cli.js', '/usr/local/bin/npx'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
+    await cx.run('/bin/chmod', ['+x', '/usr/local/bin/node', '/usr/local/lib/node_modules/npm/bin/npm-cli.js', '/usr/local/lib/node_modules/npm/bin/npx-cli.js'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
   } catch(e) {}
   setStatus('ready')
 }
@@ -68,9 +71,9 @@ export async function spawnShell(onData) {
   try {
     const dec = new TextDecoder()
     let _onData = onData
-    _cxReadFunc = cx.setCustomConsole(buf => _onData(dec.decode(buf)), 80, 24)
+    _cxReadFunc = cx.setCustomConsole(buf => _onData(dec.decode(buf).replace(/\r?\n/g, '\r\n')), 80, 24)
     const input = new WritableStream({ write(data) { for (const ch of data) _cxReadFunc(ch.charCodeAt(0)) } })
-    const resize = (cols, rows) => { _cxReadFunc = cx.setCustomConsole(buf => _onData(dec.decode(buf)), cols, rows) }
+    const resize = (cols, rows) => { _cxReadFunc = cx.setCustomConsole(buf => _onData(dec.decode(buf).replace(/\r?\n/g, '\r\n')), cols, rows) }
     cx.run('/bin/bash', ['--login'], { env: SHELL_ENV, cwd: '/root', uid: 0, gid: 0 }).catch(() => {})
     return { input, exit: new Promise(() => {}), resize }
   } catch(e) { return null }
