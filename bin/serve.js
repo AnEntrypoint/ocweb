@@ -40,7 +40,7 @@ const server = createServer((req, res) => {
     }).on('error', (e) => { res.writeHead(502); res.end(JSON.stringify({ error: e.message })) })
     return
   }
-  const urlPath = req.url === '/' ? '/index.html' : req.url.split('?')[0]
+  const urlPath = (req.url.split('?')[0] || '/') === '/' ? '/index.html' : req.url.split('?')[0]
   const filePath = join(ROOT, urlPath)
   const mime = MIME[extname(filePath)] || 'text/plain'
   try {
