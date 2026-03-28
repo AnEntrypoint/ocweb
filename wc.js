@@ -51,8 +51,8 @@ export async function boot() {
 
 async function setupNode() {
   try {
-    const checkNode = await cx.run('/usr/bin/which', ['node'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    const checkNpm = await cx.run('/usr/bin/which', ['npm'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
+    const checkNode = await cx.run('/usr/bin/test', ['-x', '/usr/local/bin/node'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
+    const checkNpm = await cx.run('/usr/bin/test', ['-x', '/usr/local/bin/npm'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
     if (checkNode === 0 && checkNpm === 0) { setStatus('ready'); return }
     setStatus('installing-node')
     const resp = await (_nodePrefetch || fetch(NODE_PROXY))
