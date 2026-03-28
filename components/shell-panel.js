@@ -1,4 +1,4 @@
-import { boot, runCli as wcRunCli, wcStatus, onWcStatus, onCdpReady, mountCdpRelay, spawnShell } from '../wc.js'
+import { boot, runCli as wcRunCli, wcStatus, onWcStatus, spawnShell } from '../wc.js'
 import { renderBrowserPanel } from '../browser.js'
 
 const SW_PATH = './bridge-sw.js'
@@ -63,7 +63,7 @@ export function mount(el, actor) {
           <option value="gemini">Gemini 2.0 Flash</option>
           <option value="anthropic">Claude (Anthropic)</option>
         </optgroup>
-        <optgroup label="WebContainer (in-browser)">
+        <optgroup label="Linux VM (in-browser)">
           <option value="claude">claude CLI</option>
           <option value="kilo">Kilo Code</option>
         </optgroup>
@@ -110,9 +110,9 @@ export function mount(el, actor) {
     requestAnimationFrame(() => { fit.fit(); _term = term; _termQueue.forEach(t => term.write(t)); _termQueue = [] })
     new ResizeObserver(() => fit.fit()).observe(termEl)
     if (wcStatus() !== 'ready') {
-      term.writeln('\x1b[33mWaiting for WebContainer...\x1b[0m')
+      term.writeln('\x1b[33mWaiting for Linux VM (CheerpX)...\x1b[0m')
       const ok = await new Promise(resolve => { let unsub; unsub = onWcStatus(s => { if (s === 'ready') { unsub?.(); resolve(true) } else if (s === 'unavailable') { unsub?.(); resolve(false) } }) })
-      if (!ok) { term.writeln('\x1b[31mWebContainer unavailable (requires cross-origin isolation)\x1b[0m'); return }
+      if (!ok) { term.writeln('\x1b[31mLinux VM unavailable (requires cross-origin isolation)\x1b[0m'); return }
     }
     const shell = await spawnShell(data => term.write(data))
     if (!shell) { term.writeln('\x1b[31mFailed to spawn shell\x1b[0m'); return }
@@ -136,7 +136,7 @@ export function mount(el, actor) {
   companion.connect()
   companion.onStatus(s => { const dot = document.getElementById('sh-companion-dot'); if(dot){dot.textContent=s;dot.className='ui-chip ui-badge-status-'+(s==='connected'?'connected':'disconnected')} })
   onWcStatus(s => { const dot = document.getElementById('sh-wc-dot'); if(dot){dot.textContent=s;dot.className='ui-chip ui-badge-status-'+(s==='ready'?'running':s==='booting'?'connecting':'disconnected')} })
-  boot().then(()=>{ mountCdpRelay().catch(()=>{}); onCdpReady(()=>appendLine('[cdp-relay ready]','info')) })
+  boot()
   const extDot=document.getElementById('sh-ext-dot'); if(extDot&&typeof chrome!=='undefined'&&chrome.runtime?.id){extDot.textContent='ext ok';extDot.className='ui-chip ui-badge-status-running'}
   renderBrowserPanel($('sh-url'),$('sh-go'),$('sh-snap'),$('sh-frame'))
 
@@ -165,7 +165,7 @@ export function mount(el, actor) {
   async function runCli(agent, prompt) {
     appendLine('you: '+prompt,'user')
     if(wcStatus()==='ready'){appendLine('[running '+agent+' — see Terminal tab]','info');appendTerm('--- '+agent+' ---');await wcRunCli(agent,prompt,evt=>{appendTerm(evt.text);const t=evt.text.replace(/[\r\n]/g,'').trim();if(t&&!/^[\\|/\-]+$/.test(t))appendLine(evt.text,'assistant')});return}
-    if(companion.status!=='connected'){appendLine('WebContainer unavailable and companion offline — run: node bin/serve.js','err');return}
+    if(companion.status!=='connected'){appendLine('Linux VM unavailable and companion offline — run: node bin/serve.js','err');return}
     appendLine('[spawning '+agent+' via companion…]','info')
     const info=await companion.call('acp.sessions.new',{agent})
     companion.subscribe(info.id,evt=>{if(evt.type==='stderr')appendLine(evt.text,'err');else if(evt.type==='session_closed'){appendLine('['+agent+' exited '+evt.code+']','info');companion.unsubscribe(info.id)}else if(evt.type==='acp_event'){const d=evt.data;if(d?.method==='session/update'&&d.params?.message?.content)d.params.message.content.filter(b=>b.type==='text').forEach(b=>appendLine(b.text,'assistant'));else if(d?.method==='tools/call')appendLine('[tool: '+(d.params?.name||'?')+']','tool')}})
