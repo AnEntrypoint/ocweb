@@ -16,12 +16,14 @@ jobs:
           curl -L https://github.com/container2wasm/container2wasm/releases/download/v0.8.4/container2wasm-v0.8.4-linux-amd64.tar.gz | tar xz
           sudo mv c2w /usr/local/bin/
       - name: Build WASM
+        env:
+          TMPDIR: /home/runner/tmp
         run: |
-          mkdir -p containers
-          c2w --build-arg=WASI_NET=browser node:23-alpine /tmp/nodejs.wasm
-          split -b 50000000 /tmp/nodejs.wasm /tmp/nodejs_chunk_
+          mkdir -p /home/runner/tmp containers
+          c2w --build-arg=WASI_NET=browser node:23-alpine /home/runner/nodejs.wasm
+          split -b 50000000 /home/runner/nodejs.wasm /home/runner/nodejs_chunk_
           i=0
-          for f in /tmp/nodejs_chunk_*; do
+          for f in /home/runner/nodejs_chunk_*; do
             printf -v n '%02d' $i
             cp "$f" "containers/nodejs${n}.wasm"
             i=$((i+1))
