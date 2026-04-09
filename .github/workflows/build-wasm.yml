@@ -1,0 +1,34 @@
+name: Build nodejs WASM
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install c2w
+        run: |
+          curl -L https://github.com/container2wasm/container2wasm/releases/download/v0.8.4/container2wasm-v0.8.4-linux-amd64.tar.gz | tar xz
+          sudo mv c2w /usr/local/bin/
+      - name: Build WASM
+        run: |
+          mkdir -p containers
+          c2w --net=browser node:23-alpine /tmp/nodejs.wasm
+          split -b 50000000 /tmp/nodejs.wasm /tmp/nodejs_chunk_
+          i=0
+          for f in /tmp/nodejs_chunk_*; do
+            printf -v n '%02d' $i
+            cp "$f" "containers/nodejs${n}.wasm"
+            i=$((i+1))
+          done
+          ls containers/nodejs*.wasm | wc -l > containers/nodejs.chunks
+          echo "Built $(cat containers/nodejs.chunks) chunks"
+      - name: Commit and push
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git add containers/nodejs*.wasm containers/nodejs.chunks
+          git commit -m "build: node:23-alpine WASM chunks"
+          git push
