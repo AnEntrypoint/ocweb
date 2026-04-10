@@ -36,3 +36,5 @@ Browser app served from GH Pages. No server-side rendering. `bridge-sw.js` servi
 - `wasiHack` (TTY fd_read/fd_write/poll_oneoff patches) is defined inline in the `makeWorkerBlob` blob source in `wc-workers.js` — it is NOT in the shared CDN scripts
 - Worker blob source lives in `wc-workers.js` (exported); `wc.js` handles boot orchestration only
 - Companion WebSocket (`getCompanion()`) connects on-demand from `runCli()` only — never eagerly at mount; no auto-reconnect loop
+- `appMachine` context field is `showSystems` (not `showShell`); `SHOW_SHELL` event is a kept alias that sets `showSystems` — reading `ctx.showShell` will be `undefined`, always read `ctx.showSystems`
+- `appMachine` context `systems[]` shape: `{id, name, mode:'ephemeral'|'persistent'|'resumable', status, layers:[], terminals:[{id,label,cmd}], selectedTerminalId}`; `createAgentConfig` gains `systemMode` (default `'ephemeral'`)
