@@ -37,10 +37,7 @@ jobs:
       - name: Build Docker image
         run: |
           mkdir -p /home/runner/tmp
-          cat > /home/runner/tmp/Dockerfile <<EOF
-FROM node:23-alpine
-RUN npm install -g ${{ matrix.pkg }}
-EOF
+          printf 'FROM node:23-alpine\nRUN npm install -g ${{ matrix.pkg }}\n' > /home/runner/tmp/Dockerfile
           docker build -t layer-${{ matrix.id }}:latest /home/runner/tmp
       - name: Convert to WASM
         env:
