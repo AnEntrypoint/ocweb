@@ -1,0 +1,68 @@
+[
+  {
+    "id": "systems-panel",
+    "subject": "Replace shell-panel with systems-panel: system lifecycle UI + multi-terminal management",
+    "status": "pending",
+    "description": "New components/systems-panel.js replaces components/shell-panel.js entirely. Layout: left column = systems list (each showing name, mode badge, status dot, terminal count) + '+New System' button. Right area = selected system: tabs row showing terminals (+New Terminal button) + active terminal xterm. New System dialog: name, mode selector (ephemeral/persistent/resumable), layer checkboxes (read from layers.json). New Terminal dialog: label, optional command override (default: interactive sh; alt: 'opencode-ai', 'claude', 'kilo', 'codex'). Each terminal is independently scrollable xterm with CanvasAddon. Ephemeral system auto-destroys when last terminal closed. Remove sh-shell chat panel (agent chat stays in agent-chat-panel). Split across systems-panel.js + components/term-view.js if needed to stay ≤200L each.",
+    "effort": "large",
+    "category": "feature",
+    "blocking": [
+      "app-systems-wire"
+    ],
+    "blockedBy": [],
+    "acceptance": [
+      "+New System button opens dialog, on confirm boots WASM worker with selected layers",
+      "System status updates to 'ready' when boot completes",
+      "+New Terminal on ready system opens xterm tab connected to that system",
+      "Multiple terminals on same system each have independent xterm instances",
+      "Mode=ephemeral system destroyed when user closes last terminal",
+      "Mode=resumable system persists; re-attaching creates new PTY to same worker",
+      "systems-panel.js ≤200 lines, any split files also ≤200 lines",
+      "shell-panel.js deleted"
+    ],
+    "edge_cases": [
+      "layers.json missing: show empty layer list, no error",
+      "System boot fails: status=unavailable, show error in terminal area",
+      "Multiple terminals same system: all PTYs open against same worker independently"
+    ]
+  },
+  {
+    "id": "app-systems-wire",
+    "subject": "Wire systems panel into app.js, remove shell panel references",
+    "status": "pending",
+    "description": "app.js: import mount from systems-panel instead of shell-panel. oc-shell div → oc-systems. showShell → showSystems in machine and app.js render. Header-bar Shell button → Systems. Remove shellTab references. app.js ≤200 lines.",
+    "effort": "small",
+    "category": "refactor",
+    "blocking": [],
+    "blockedBy": [
+      "systems-panel"
+    ],
+    "acceptance": [
+      "app.js has no import from shell-panel.js",
+      "Systems panel mounts and renders when showSystems is true",
+      "app.js ≤200 lines"
+    ],
+    "edge_cases": []
+  },
+  {
+    "id": "ci-layers",
+    "subject": "Add FS layer WASM builds to CI for npm tool layers",
+    "status": "pending",
+    "description": "New .github/workflows/build-layers.yml with matrix strategy: [{id:'opencode',pkg:'opencode-ai'},{id:'claude',pkg:'@anthropic-ai/claude-code'},{id:'kilo',pkg:'kilo-code'},{id:'codex',pkg:'@openai/codex'}]. Each job: FROM node:23-alpine && RUN npm install -g <pkg> → c2w → split → containers/layer-<id>*.wasm + containers/layer-<id>.chunks. After all matrix jobs complete, a final job writes containers/layers.json: [{id,name,label,chunks}]. Triggers on push to master, skips bot actor.",
+    "effort": "large",
+    "category": "infra",
+    "blocking": [],
+    "blockedBy": [],
+    "acceptance": [
+      "build-layers.yml exists with matrix of 4 tools",
+      "containers/layers.json committed after CI run with 4 entries",
+      "Each layer entry: {id, name, label, chunks} where chunks is integer chunk count",
+      "wc.js createSystem() accepts layers:[] param and concatenates layer WASM chunks after base chunks"
+    ],
+    "edge_cases": [
+      "npm package name wrong (kilo-code may differ): use correct npm package names",
+      "Layer build may fail for one tool: matrix continue-on-error:true, missing layers excluded from layers.json",
+      "Layer WASM size: may need more than 50MB chunks"
+    ]
+  }
+]

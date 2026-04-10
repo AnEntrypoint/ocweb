@@ -14,8 +14,7 @@ const appMachine = setup({
     focusFilter: "all",
     panel: null,
     showApiSetup: true,
-    showShell: false,
-    shellTab: 'shell',
+    showSystems: false,
     wcStatus: 'unavailable',
     terminalReady: false,
     settings: { anthropicKey: "", openaiKey: "", defaultModel: "claude-sonnet-4-20250514" },
@@ -23,6 +22,8 @@ const appMachine = setup({
     modelsLoading: false,
     pendingApprovals: [],
     _lastApprovalDecisions: {},
+    systems: [],
+    selectedSystemId: null,
   },
   states: {
     running: {
@@ -36,8 +37,8 @@ const appMachine = setup({
         SET_FILTER: { actions: assign({ focusFilter: ({ event }) => event.filter }) },
         SHOW_PANEL: { actions: assign({ panel: ({ event }) => event.panel }) },
         SHOW_API_SETUP: { actions: assign({ showApiSetup: ({ event }) => event.show }) },
-        SHOW_SHELL: { actions: assign({ showShell: ({ event }) => event.show, showApiSetup: false }) },
-        SET_SHELL_TAB: { actions: assign({ shellTab: ({ event }) => event.tab }) },
+        SHOW_SHELL: { actions: assign({ showSystems: ({ event }) => event.show, showApiSetup: false }) },
+        SHOW_SYSTEMS: { actions: assign({ showSystems: ({ event }) => event.show, showApiSetup: false }) },
         SET_SETTINGS: { actions: assign({ settings: ({ event }) => event.settings }) },
         SET_MODELS: { actions: assign({ models: ({ event }) => event.models, modelsLoading: false }) },
         SET_MODELS_LOADING: { actions: assign({ modelsLoading: true }) },
@@ -46,6 +47,14 @@ const appMachine = setup({
         MARK_ACTIVITY: { actions: assign({ agents: ({ context, event }) => context.agents.map(a => a.agentId !== event.agentId ? a : { ...a, lastActivityAt: Date.now(), hasUnseenActivity: context.selectedAgentId !== event.agentId }) }) },
         SET_WC_STATUS: { actions: assign({ wcStatus: ({ event }) => event.status }) },
         SET_TERMINAL_READY: { actions: assign({ terminalReady: ({ event }) => event.ready }) },
+        ADD_SYSTEM: { actions: assign({ systems: ({ context, event }) => [...context.systems, event.system], selectedSystemId: ({ context, event }) => context.selectedSystemId ?? event.system.id }) },
+        REMOVE_SYSTEM: { actions: assign({ systems: ({ context, event }) => context.systems.filter(s => s.id !== event.id), selectedSystemId: ({ context, event }) => { const remaining = context.systems.filter(s => s.id !== event.id); return context.selectedSystemId === event.id ? (remaining[0]?.id || null) : context.selectedSystemId; } }) },
+        UPDATE_SYSTEM: { actions: assign({ systems: ({ context, event }) => context.systems.map(s => s.id === event.id ? { ...s, ...event.patch } : s) }) },
+        SELECT_SYSTEM: { actions: assign({ selectedSystemId: ({ event }) => event.id }) },
+        ADD_TERMINAL: { actions: assign({ systems: ({ context, event }) => context.systems.map(s => s.id === event.systemId ? { ...s, terminals: [...s.terminals, event.terminal] } : s) }) },
+        REMOVE_TERMINAL: { actions: assign({ systems: ({ context, event }) => context.systems.map(s => s.id === event.systemId ? { ...s, terminals: s.terminals.filter(t => t.id !== event.terminalId), selectedTerminalId: s.selectedTerminalId === event.terminalId ? (s.terminals.filter(t => t.id !== event.terminalId)[0]?.id || null) : s.selectedTerminalId } : s) }) },
+        SELECT_TERMINAL: { actions: assign({ systems: ({ context, event }) => context.systems.map(s => s.id === event.systemId ? { ...s, selectedTerminalId: event.terminalId } : s) }) },
+        UPDATE_TERMINAL: { actions: assign({ systems: ({ context, event }) => context.systems.map(s => s.id === event.systemId ? { ...s, terminals: s.terminals.map(t => t.id === event.terminalId ? { ...t, ...event.patch } : t) } : s) }) },
       }
     }
   }
@@ -66,6 +75,7 @@ function createAgentConfig(overrides) {
     intelligenceMode: overrides.intelligenceMode || "direct",
     acpAgent: overrides.acpAgent || "claude",
     acpSessionId: overrides.acpSessionId || null,
+    systemMode: overrides.systemMode || "ephemeral",
     status: "idle",
     awaitingUserInput: false,
     hasUnseenActivity: false,

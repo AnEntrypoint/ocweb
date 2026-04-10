@@ -46,7 +46,7 @@ function renderAll() {
   const ctx = actor.getSnapshot().context;
   renderHeader(actor, els.header);
   renderSidebar(actor, els.sidebar, () => openModal(actor, els.modal));
-  if (ctx.showShell) {
+  if (ctx.showSystems) {
     els.chat.style.display = "none";
     els.apiSetup.style.display = "none";
     els.shell.style.display = "flex";
