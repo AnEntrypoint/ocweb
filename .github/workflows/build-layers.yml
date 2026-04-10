@@ -97,8 +97,7 @@ jobs:
           git config user.name "GitHub Actions"
           git add containers/
           git commit -m "build: layer WASMs and layers.json" || echo "nothing to commit"
-          git pull --rebase origin master
-          git push
+          git push --force origin HEAD:master
 
   deploy-pages:
     if: github.actor != 'github-actions[bot]'
