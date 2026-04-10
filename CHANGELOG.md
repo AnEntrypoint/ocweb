@@ -1,4 +1,5 @@
 ## [unreleased] - 2026-04-10
+- fix(systems-panel): pass layers to createSystem in mountTerminal so each terminal's WASM worker receives layer URLs (commit a81c039)
 - feat(systems-panel): add components/systems-panel.js replacing shell-panel.js; left sidebar with system list + status dots + mode badges; right area with terminal tabs + xterm; New System dialog with name/mode/layers; New Terminal dialog with label/cmd selector; each terminal = independent WASM worker via wcId; ephemeral destroy on last terminal close; window.__debug.systems exposed
 - feat(term-view): add components/term-view.js; mounts xterm Terminal with CanvasAddon+FitAddon into element; connects via sys.spawnShell(); returns {dispose()}
 - refactor: delete components/shell-panel.js
