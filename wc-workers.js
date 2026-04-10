@@ -12,7 +12,7 @@ onmessage = function(msg) {
   recvCert().then(function(cert) {
     var certDir = getCertDir(cert);
     var fds = [undefined, undefined, undefined, certDir, undefined, undefined];
-    var args = ['arg0', '--net=socket=listenfd=4', '--mac', genmac(), '-entrypoint', '/bin/sh'];
+    var args = ['arg0', '--net=socket=listenfd=4', '--mac', genmac(), '-entrypoint', '/bin/sh', '--', '-i'];
     var env = ${JSON.stringify(env)};
     var urls = ${JSON.stringify(chunkUrls)};
     Promise.all(urls.map(function(u) {
