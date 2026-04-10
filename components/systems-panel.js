@@ -35,7 +35,7 @@ ${sys.map(s => `<div class="sp-sys${s.id===ctx.selectedSystemId?' sel':''}" data
 <div class="sp-add"><button class="sp-btn" id="btn-new-sys">+ New System</button></div>
 </div>`
   el.querySelectorAll('[data-sid]').forEach(b => b.onclick = () => actor.send({ type: 'SELECT_SYSTEM', id: b.dataset.sid }))
-  el.querySelector('#btn-new-sys').onclick = () => openNewSysDialog(el, actor)
+  el.querySelector('#btn-new-sys').onclick = async () => { await fetchLayers(); openNewSysDialog(el, actor) }
 }
 
 function openNewSysDialog(root, actor) {
@@ -46,7 +46,8 @@ function openNewSysDialog(root, actor) {
 <input id="dlg-name" placeholder="System name" style="padding:6px 10px;background:var(--input);border:1px solid var(--border);color:var(--foreground);border-radius:6px;font-size:13px">
 <div style="font-size:12px;color:var(--muted-foreground)">Mode</div>
 ${['ephemeral','persistent','resumable'].map(m=>`<label style="display:flex;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="dlg-mode" value="${m}"${m==='ephemeral'?' checked':''}>${m}</label>`).join('')}
-${_layers.length?`<div style="font-size:12px;color:var(--muted-foreground)">Layers</div>${_layers.map(l=>`<label style="display:flex;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" name="dlg-layer" value="${l.id}">${l.label||l.id}</label>`).join('')}`:''}
+<div style="font-size:12px;color:var(--muted-foreground)">Layers</div>
+${_layers.length ? _layers.map(l=>`<label style="display:flex;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" name="dlg-layer" value="${l.id}">${l.label||l.id}</label>`).join('') : `<div style="font-size:12px;color:var(--muted-foreground);font-style:italic">No layers available — CI build pending</div>`}
 <div style="display:flex;gap:8px;justify-content:flex-end">
 <button id="dlg-cancel" style="padding:6px 14px;font-size:13px;background:var(--muted);color:var(--foreground);border:none;border-radius:6px;cursor:pointer">Cancel</button>
 <button id="dlg-ok" style="padding:6px 14px;font-size:13px;background:var(--primary);color:var(--primary-foreground);border:none;border-radius:6px;cursor:pointer">Create</button>
