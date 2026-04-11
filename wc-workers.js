@@ -63,12 +63,13 @@ async function opfsMounts(ms) {
   return dirs;
 }
 (async function() {
-var _init = await new Promise(function(res) { onmessage = function(e) { if (e.data && e.data.type === 'desktop-handles') { onmessage = null; res(e.data); } }; });
+var _pending = [];
+var _init = await new Promise(function(res) { onmessage = function(e) { if (e.data && e.data.type === 'desktop-handles') { onmessage = function(e2) { _pending.push(e2); }; res(e.data); } }; });
 var _wasmBuffers = _init.wasmBuffers || [];
 var _dh = _init.handles || [];
 for (var i=0; i<_dh.length; i++) _desktopHandles[_dh[i].vmPath] = _dh[i].handle;
 var _mounts = await opfsMounts(${JSON.stringify(mounts)});
-onmessage = function(msg) {
+function _realHandler(msg) {
   if (serveIfInitMsg(msg)) return;
   var ttyClient = new TtyClient(msg.data);
   recvCert().then(function(cert) {
@@ -88,7 +89,10 @@ onmessage = function(msg) {
         .then(function(inst) { wasi.start(inst.instance); });
     });
   });
-};
+}
+onmessage = _realHandler;
+_pending.forEach(function(m) { _realHandler(m); });
+_pending = null;
 })();
 function genmac() {
   return '02:XX:XX:XX:XX:XX'.replace(/X/g, function() {
