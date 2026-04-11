@@ -1,26 +1,50 @@
 [
   {
     "id": "opencode",
-    "name": "opencode-ai",
     "label": "OpenCode AI",
-    "chunks": 25
+    "mountPath": "/root/.config/opencode",
+    "tools": [
+      {
+        "name": "opencode-ai",
+        "url": "https://opencode.ai/install",
+        "installCmd": "bun install -g opencode-ai"
+      }
+    ]
   },
   {
     "id": "claude",
-    "name": "@anthropic-ai/claude-code",
     "label": "Claude Code",
-    "chunks": 8
+    "mountPath": "/root/.config/claude",
+    "tools": [
+      {
+        "name": "@anthropic-ai/claude-code",
+        "url": "https://www.npmjs.com/package/@anthropic-ai/claude-code",
+        "installCmd": "bun install -g @anthropic-ai/claude-code"
+      }
+    ]
   },
   {
     "id": "kilo",
-    "name": "@kilocode/cli",
     "label": "Kilo Code",
-    "chunks": 29
+    "mountPath": "/root/.config/kilo",
+    "tools": [
+      {
+        "name": "@kilocode/cli",
+        "url": "https://www.npmjs.com/package/@kilocode/cli",
+        "installCmd": "bun install -g @kilocode/cli"
+      }
+    ]
   },
   {
     "id": "codex",
-    "name": "@openai/codex",
     "label": "Codex",
-    "chunks": 11
+    "mountPath": "/root/.config/codex",
+    "tools": [
+      {
+        "name": "@openai/codex",
+        "url": "https://www.npmjs.com/package/@openai/codex",
+        "installCmd": "bun install -g @openai/codex"
+      }
+    ]
   }
 ]
