@@ -1,7 +1,7 @@
 import { makeWorkerBlob, makeStackWorkerBlob } from './wc-workers.js'
 
 const DEMO_BASE = 'https://ktock.github.io/container2wasm-demo'
-const XTERM_PTY_CDN = 'https://cdn.jsdelivr.net/npm/xterm-pty@0.9.4'
+const XTERM_PTY_CDN = './vendor'
 const IMAGE_PREFIX = './containers/nodejs'
 const CHUNKS_URL = './containers/nodejs.chunks'
 const STACK_WORKER_URL = './wc-stack-worker.js'
@@ -48,13 +48,13 @@ export function bootAssets() {
     const [chunks, stackSrc, workerTools, shim, wasiDefs, workerUtil, wasiUtil, xtermJs, stackJs] = await Promise.all([
       fetchChunkCount(),
       fetchText(STACK_WORKER_URL),
-      fetchText(XTERM_PTY_CDN + '/workerTools.js'),
-      fetchText(DEMO_BASE + '/src/browser_wasi_shim/index.js'),
-      fetchText(DEMO_BASE + '/src/browser_wasi_shim/wasi_defs.js'),
-      fetchText(DEMO_BASE + '/src/worker-util.js'),
-      fetchText(DEMO_BASE + '/src/wasi-util.js'),
-      fetchText(XTERM_PTY_CDN + '/index.js'),
-      fetchText(DEMO_BASE + '/src/stack.js'),
+      fetchText('./vendor/xterm-pty-worker-tools.js'),
+      fetchText('./vendor/wasm-shim.js'),
+      fetchText('./vendor/wasm-defs.js'),
+      fetchText('./vendor/wasm-worker-util.js'),
+      fetchText('./vendor/wasm-wasi-util.js'),
+      fetchText('./vendor/xterm-pty-index.js'),
+      fetchText('./vendor/wasm-stack.js'),
     ])
     await fetchAndExecScript(xtermJs)
     await fetchAndExecScript(stackJs)
