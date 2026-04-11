@@ -1,11 +1,29 @@
-const CACHE = 'bridge-sw-v1'
-const BRIDGE_CONFIG_KEY = 'bridge_config'
+const WASM_CACHE = 'wasm-chunks'
+const VERSION_URL = 'cache-version'
 
 let config = { anthropicApiKey: '', openaiApiKey: '', openrouterApiKey: '' }
 
+async function wasmVersion() {
+  const [a, b] = await Promise.all([
+    fetch('./containers/nodejs.chunks').then(r => r.ok ? r.text() : ''),
+    fetch('./containers/layers.json').then(r => r.ok ? r.text() : ''),
+  ])
+  return a.trim() + '|' + b.trim()
+}
+
+async function invalidateOnVersionChange() {
+  const cache = await caches.open(WASM_CACHE)
+  const stored = await cache.match(VERSION_URL).then(r => r ? r.text() : null)
+  const current = await wasmVersion().catch(() => null)
+  if (!current || stored === current) return
+  const keys = await cache.keys()
+  await Promise.all(keys.map(r => cache.delete(r)))
+  await cache.put(VERSION_URL, new Response(current))
+}
+
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', e => e.waitUntil(
-  self.clients.claim().then(() =>
+  invalidateOnVersionChange().then(() => self.clients.claim()).then(() =>
     self.clients.matchAll({ type: 'window' }).then(clients =>
       clients.forEach(c => { if (!new URL(c.url).searchParams.has('coi-reloaded')) c.navigate(c.url + (c.url.includes('?') ? '&' : '?') + 'coi-reloaded=1') })
     )
@@ -133,5 +151,15 @@ self.addEventListener('fetch', (e) => {
     if (e.request.method === 'POST') { e.respondWith(handleMessages(e.request).catch(err => new Response(JSON.stringify({ error: { type: 'api_error', message: err.message } }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }))); return }
   }
   if (e.request.cache === 'only-if-cached' && e.request.mode !== 'same-origin') return
+  if (e.request.url.endsWith('.wasm') && new URL(e.request.url).origin === location.origin) {
+    e.respondWith(caches.open(WASM_CACHE).then(async cache => {
+      const hit = await cache.match(e.request)
+      if (hit) return withCoi(hit)
+      const res = await fetch(e.request)
+      if (res.ok) cache.put(e.request, res.clone())
+      return withCoi(res)
+    }))
+    return
+  }
   e.respondWith(fetch(e.request).then(withCoi).catch(() => fetch(e.request)))
 })
