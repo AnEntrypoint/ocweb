@@ -28,13 +28,16 @@ export async function mount(el, sys) {
   requestAnimationFrame(() => fit.fit())
   let disposed = false
   if (sys.status !== 'ready') {
-    term.writeln('\x1b[33mWaiting for system to boot...\x1b[0m')
+    term.writeln('\x1b[33mBooting...\x1b[0m')
+    sys._onProgress = d => term.write('\r\x1b[2KLoading ' + d.path + ': ' + d.loaded + '/' + d.total)
     await new Promise((resolve, reject) => {
       const unsub = sys.onStatus(s => {
         if (s === 'ready') { unsub(); resolve() }
         else if (s === 'unavailable') { unsub(); reject(new Error('system unavailable — check console for details')) }
       })
     })
+    sys._onProgress = null
+    term.write('\r\x1b[2K')
   }
   if (disposed) return { dispose: () => {} }
   const shell = await sys.spawnShell(payload => {

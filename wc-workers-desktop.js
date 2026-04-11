@@ -1,5 +1,4 @@
 export function desktopBlobSrc(mounts) {
-  const vpaths = JSON.stringify(mounts.filter(m => m.type === 'desktop').map(m => m.vmPath))
   return `
 var _desktopHandles = {};
 var _desktopFiles = new Map();
@@ -40,6 +39,5 @@ class DesktopPreopenDir extends PreopenDirectory {
     return r;
   }
 }
-var _desktopVmPaths = ${vpaths};
 `
 }
