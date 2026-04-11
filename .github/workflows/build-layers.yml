@@ -44,9 +44,13 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git fetch origin master
-          git reset --soft origin/master
-          git restore --staged .
-          git add "containers/layer-${{ matrix.id }}"*.wasm "containers/layer-${{ matrix.id }}.chunks"
-          git diff --cached --quiet || git commit -m "build: ${{ matrix.id }} layer WASM chunks"
-          git push origin HEAD:master
+          for i in 1 2 3 4 5; do
+            git fetch origin master
+            git reset --soft origin/master
+            git restore --staged .
+            git add "containers/layer-${{ matrix.id }}"*.wasm "containers/layer-${{ matrix.id }}.chunks"
+            git diff --cached --quiet || git commit -m "build: ${{ matrix.id }} layer WASM chunks"
+            git push origin HEAD:master && break
+            echo "push failed, retrying ($i)..."
+            sleep $((i * 5))
+          done
