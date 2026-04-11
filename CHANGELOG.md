@@ -1,5 +1,7 @@
 ## [unreleased] - 2026-04-11
 - feat(bridge-sw): cache WASM chunks in Cache Storage with version-keyed invalidation; invalidate on SW activate when nodejs.chunks or layers.json content changes
+- fix(build-layers): write-manifest job now fetches origin/master and resets --soft before committing to avoid ref lock failures on force-push during concurrent long-running builds
+- validated: 64/64 WASM requests served from SW cache (0 network hits) on second page load; all 25 opencode layer chunks cached; system boots to ready from cache
 
 ## [unreleased] - 2026-04-10
 - fix(systems-panel): pass layers to createSystem in mountTerminal so each terminal's WASM worker receives layer URLs (commit a81c039)
