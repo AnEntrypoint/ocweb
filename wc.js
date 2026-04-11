@@ -112,6 +112,7 @@ export function createSystem(id, opts) {
         const blobMounts = mounts.map(m => m.desktopHandle ? {vmPath:m.vmPath, type:'desktop'} : m)
         const desktopHandles = mounts.filter(m => m.desktopHandle).map(m => ({vmPath:m.vmPath, handle:m.desktopHandle}))
         worker = new Worker(makeWorkerBlob(SHELL_ENV, [workerTools, ...sharedScripts], opts.cmd || ['-i'], blobMounts))
+        worker.onerror = e => console.error('worker error [' + id + ']:', e.message, e.filename + ':' + e.lineno)
         worker.postMessage({type:'desktop-handles', handles:desktopHandles, wasmBuffers}, wasmBuffers)
         worker.onmessage = function(e) {
           const d = e.data; if (!d) return
@@ -144,6 +145,13 @@ export function createSystem(id, opts) {
     onStatus: function(fn) { cbs.add(fn); fn(status); return () => cbs.delete(fn) }
   }
   _registry.set(id, sys)
+  if (typeof window !== 'undefined') {
+    window.__debug = window.__debug || {}
+    window.__debug.wc = window.__debug.wc || {}
+    window.__debug.wc.registry = _registry
+    window.__debug.wc[id] = sys
+    Object.defineProperty(sys, '_worker', { get: () => worker })
+  }
   return sys
 }
 
