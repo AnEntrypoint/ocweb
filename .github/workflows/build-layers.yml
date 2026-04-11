@@ -37,7 +37,7 @@ jobs:
       - name: Build Docker image
         run: |
           mkdir -p /home/runner/tmp
-          printf 'FROM oven/bun:1.0.5-alpine\nRUN bun install -g ${{ matrix.pkg }}\n' > /home/runner/tmp/Dockerfile
+          printf 'FROM oven/bun:1.0.5-alpine\nRUN apk add --no-cache git curl bash vim openssh-client\nRUN bun install -g ${{ matrix.pkg }}\n' > /home/runner/tmp/Dockerfile
           docker build -t layer-${{ matrix.id }}:latest /home/runner/tmp
       - name: Convert to WASM
         env:
