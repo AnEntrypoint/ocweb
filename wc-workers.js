@@ -80,7 +80,12 @@ onmessage = function(msg) {
     var env = ${JSON.stringify(env)};
     var urls = ${JSON.stringify(chunkUrls)};
     var _pi = 0; Promise.all(urls.map(function(u) {
-      return fetch(u).then(function(r) { if (!r.ok) throw new Error(u + ' ' + r.status); return r.arrayBuffer(); }).then(function(ab) { postMessage({type:'wasm-progress',loaded:++_pi,total:urls.length}); return ab; });
+      return caches.open('wasm-chunks').then(function(cache) {
+        return cache.match(u).then(function(hit) {
+          if (hit) return hit.arrayBuffer();
+          return fetch(u).then(function(r) { if (!r.ok) throw new Error(u + ' ' + r.status); var clone = r.clone(); cache.put(u, clone); return r.arrayBuffer(); });
+        });
+      }).then(function(ab) { postMessage({type:'wasm-progress',loaded:++_pi,total:urls.length}); return ab; });
     })).then(function(bufs) {
       var total = bufs.reduce(function(n, b) { return n + b.byteLength; }, 0);
       var merged = new Uint8Array(total); var off = 0;

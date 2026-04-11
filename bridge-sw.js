@@ -156,7 +156,7 @@ self.addEventListener('fetch', (e) => {
       const hit = await cache.match(e.request)
       if (hit) return withCoi(hit)
       const res = await fetch(e.request)
-      if (res.ok) cache.put(e.request, res.clone())
+      if (res.ok) await cache.put(e.request, res.clone())
       return withCoi(res)
     }))
     return
