@@ -1,4 +1,7 @@
 ## [unreleased]
+- feat(desktop-fs): add desktop FileSystem mount; showDirectoryPicker in New System dialog (hidden when API unavailable); desktopWalk loads dir tree into RAM via getFile().arrayBuffer(); DesktopOpenFile/DesktopPreopenDir classes with write-back via desktop-write postMessage; worker pre-init desktop-handles rendezvous; wc-workers-desktop.js splits desktop blob src; wc.js posts handles before TtyClient init and flushes writes via createWritable; backward-compat: OPFS mounts unchanged
+
+## [unreleased]
 - fix(build-wasm): move c2w output and Dockerfile to workspace dir to avoid /tmp/snap-private-tmp permission denied on ubuntu-latest runners
 - feat(opfs): add OPFS-backed persistent filesystem in worker blob; OPFSOpenFile writes sync to OPFS via createSyncAccessHandle; default /root mount; progress messages {type:'opfs-init'} forwarded via wc.js onProgress
 - ci(build-wasm): switch to alpine:3.20 base WASM; remove build-layers.yml and all layer WASM/chunks from containers/

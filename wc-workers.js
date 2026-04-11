@@ -1,10 +1,12 @@
+import { desktopBlobSrc } from './wc-workers-desktop.js'
+
 export function makeWorkerBlob(chunks, env, scripts, imagePrefix, cmd = ['-i'], extraUrls = [], mounts = []) {
   const chunkUrls = [
     ...Array.from({ length: chunks }, (_, i) => imagePrefix + String(i).padStart(2, '0') + '.wasm'),
     ...extraUrls,
   ]
   const preamble = scripts.join('\n')
-  const src = preamble + `
+  const src = preamble + desktopBlobSrc(mounts) + `
 var ERRNO_INVAL = 28;
 var ERRNO_AGAIN = 6;
 var _opfsSyncHandles = new Map();
@@ -54,10 +56,19 @@ class OPFSPreopenDir extends PreopenDirectory {
 }
 async function opfsMounts(ms) {
   var dirs = [];
-  for (var m of ms) { var dh = await opfsNavigate(m.opfsPath); dirs.push(new OPFSPreopenDir(m.vmPath, await opfsWalk(dh, m.vmPath), dh)); }
+  for (var m of ms) {
+    if (m.type === 'desktop') {
+      var dh = _desktopHandles[m.vmPath]; if (!dh) throw new Error('no desktop handle for ' + m.vmPath);
+      dirs.push(new DesktopPreopenDir(m.vmPath, await desktopWalk(dh, m.vmPath), dh));
+    } else {
+      var dh = await opfsNavigate(m.opfsPath || 'home/root'); dirs.push(new OPFSPreopenDir(m.vmPath, await opfsWalk(dh, m.vmPath), dh));
+    }
+  }
   return dirs;
 }
 (async function() {
+var _dh = await new Promise(function(res) { onmessage = function(e) { if (e.data && e.data.type === 'desktop-handles') { onmessage = null; res(e.data.handles || []); } }; });
+for (var i=0; i<_dh.length; i++) _desktopHandles[_dh[i].vmPath] = _dh[i].handle;
 var _mounts = await opfsMounts(${JSON.stringify(mounts)});
 onmessage = function(msg) {
   if (serveIfInitMsg(msg)) return;

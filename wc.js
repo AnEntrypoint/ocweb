@@ -95,8 +95,15 @@ export function createSystem(id, opts) {
         const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
         const extraUrls = await fetchLayerUrls(opts.layers)
         const mounts = opts.mounts || [{vmPath:'/root', opfsPath:'home/root'}]
-        worker = new Worker(makeWorkerBlob(chunks, SHELL_ENV, [workerTools, ...sharedScripts], absImagePrefix, opts.cmd || ['-i'], extraUrls, mounts))
-        worker.onmessage = function(e) { if (e.data && e.data.type === 'opfs-init') sys._onProgress && sys._onProgress(e.data) }
+        const blobMounts = mounts.map(m => m.desktopHandle ? {vmPath:m.vmPath, type:'desktop'} : m)
+        const desktopHandles = mounts.filter(m => m.desktopHandle).map(m => ({vmPath:m.vmPath, handle:m.desktopHandle}))
+        worker = new Worker(makeWorkerBlob(chunks, SHELL_ENV, [workerTools, ...sharedScripts], absImagePrefix, opts.cmd || ['-i'], extraUrls, blobMounts))
+        worker.postMessage({type:'desktop-handles', handles:desktopHandles})
+        worker.onmessage = function(e) {
+          const d = e.data; if (!d) return
+          if (d.type === 'opfs-init' || d.type === 'desktop-init') { sys._onProgress && sys._onProgress(d); return }
+          if (d.type === 'desktop-write') { d.dh.getFileHandle(d.name, {create:true}).then(fh => fh.createWritable()).then(w => w.write(new Uint8Array(d.data)).then(() => w.close())).catch(e => console.error('desktop-write flush failed:', e)) }
+        }
         stackWorker = new Worker(makeStackWorkerBlob(stackSrc, sharedScripts))
         nwStack = window.newStack(worker, IMAGE_PREFIX, chunks, stackWorker, DEMO_BASE + '/src/c2w-net-proxy.wasm')
         setStatus('ready')

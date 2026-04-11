@@ -13,6 +13,7 @@ async function fetchLayers() {
 
 const _termSystems = new Map()
 const _termDispose = new Map()
+const _desktopHandles = new Map()
 
 function statusDot(s) {
   const c = s === 'ready' ? '#22c55e' : s === 'booting' ? '#f59e0b' : '#ef4444'
@@ -50,20 +51,36 @@ function openNewSysDialog(actor) {
 ${['ephemeral','persistent','resumable'].map(m=>`<label style="display:flex;gap:8px;font-size:13px;cursor:pointer"><input type="radio" name="dlg-mode" value="${m}"${m==='ephemeral'?' checked':''}>${m}</label>`).join('')}
 <div style="font-size:12px;color:var(--muted-foreground)">Layers</div>
 ${_layers.length ? _layers.map(l=>`<label style="display:flex;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" name="dlg-layer" value="${l.id}">${l.label||l.id}</label>`).join('') : `<div style="font-size:12px;color:var(--muted-foreground);font-style:italic">No layers — CI build pending</div>`}
+${typeof window !== 'undefined' && window.showDirectoryPicker ? `<div style="font-size:12px;color:var(--muted-foreground)">Desktop folder (mounts /root)</div>
+<div style="display:flex;gap:8px;align-items:center"><button id="dlg-pick" style="padding:5px 12px;font-size:12px;background:var(--muted);color:var(--foreground);border:1px solid var(--border);border-radius:6px;cursor:pointer">Pick folder</button><span id="dlg-fname" style="font-size:12px;color:var(--muted-foreground)">none</span></div>` : ''}
 <div style="display:flex;gap:8px;justify-content:flex-end">
 <button id="dlg-cancel" style="padding:6px 14px;font-size:13px;background:var(--muted);color:var(--foreground);border:none;border-radius:6px;cursor:pointer">Cancel</button>
 <button id="dlg-ok" style="padding:6px 14px;font-size:13px;background:var(--primary);color:var(--primary-foreground);border:none;border-radius:6px;cursor:pointer">Create</button>
 </div></div>`
   document.body.appendChild(overlay)
+  let _pickedHandle = null
+  if (overlay.querySelector('#dlg-pick')) {
+    overlay.querySelector('#dlg-pick').onclick = async () => {
+      try {
+        _pickedHandle = await window.showDirectoryPicker()
+        overlay.querySelector('#dlg-fname').textContent = _pickedHandle.name
+      } catch(e) {
+        if (e.name !== 'AbortError') throw new Error('showDirectoryPicker failed: ' + e.message)
+      }
+    }
+  }
   overlay.querySelector('#dlg-cancel').onclick = () => overlay.remove()
   overlay.querySelector('#dlg-ok').onclick = async () => {
     const name = overlay.querySelector('#dlg-name').value.trim() || 'system-' + uid()
     const mode = overlay.querySelector('[name=dlg-mode]:checked')?.value || 'ephemeral'
     const layers = [...overlay.querySelectorAll('[name=dlg-layer]:checked')].map(c => c.value)
+    const pickedHandle = _pickedHandle
     overlay.remove()
     const id = uid()
+    const mounts = pickedHandle ? [{vmPath:'/root', desktopHandle:pickedHandle}] : undefined
+    if (mounts) _desktopHandles.set(id, mounts)
     actor.send({ type: 'ADD_SYSTEM', system: { id, name, mode, status: 'booting', layers, terminals: [], selectedTerminalId: null } })
-    const sys = createSystem(id, { mode, layers })
+    const sys = createSystem(id, { mode, layers, mounts })
     sys.onStatus(s => actor.send({ type: 'UPDATE_SYSTEM', id, patch: { status: s } }))
     try { await sys.boot() } catch (e) { actor.send({ type: 'UPDATE_SYSTEM', id, patch: { status: 'unavailable' } }) }
   }
@@ -100,7 +117,8 @@ async function mountTerminal(el, sysRecord, tid, actor) {
   termEl.style.cssText = 'width:100%;height:100%'
   el.appendChild(termEl)
   const cmd = (!term.cmd || term.cmd === 'sh -i') ? undefined : ['sh', '-c', 'exec ' + term.cmd]
-  const sys = createSystem(term.wcId, { mode: sysRecord.mode, layers: sysRecord.layers, cmd })
+  const mounts = _desktopHandles.get(sysRecord.id)
+  const sys = createSystem(term.wcId, { mode: sysRecord.mode, layers: sysRecord.layers, cmd, mounts })
   _termSystems.set(tid, sys)
   try {
     if (sys.status !== 'ready') await sys.boot()
@@ -176,5 +194,5 @@ export function mount(el, actor) {
   renderSidebar(side, ctx, actor)
   renderMain(main, ctx, actor)
   window.__debug = window.__debug || {}
-  window.__debug.systems = { termSystems: _termSystems, termDispose: _termDispose }
+  window.__debug.systems = { termSystems: _termSystems, termDispose: _termDispose, desktopHandles: _desktopHandles }
 }
