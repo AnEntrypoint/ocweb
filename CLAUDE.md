@@ -35,6 +35,21 @@ Browser app served from GH Pages. No server-side rendering. `bridge-sw.js` servi
 - Commits and pushes `containers/` to master (requires `contents: write` permission)
 - CI push pattern (both build-wasm and build-layers write-manifest): `git fetch origin master` then `git reset --soft origin/master` then `git restore --staged .` then `git add <files>` then `git commit` then `git push origin HEAD:master`; the `restore --staged` is critical — without it, workflow files from other commits get staged and GitHub rejects the bot push with "refusing to allow a GitHub App to create or update workflow"
 
+## Partial Clone + Local Commit Limitation
+
+Local git commit fails when text file changes are made AFTER CI pushes WASM blobs. Root cause: repo uses `partialclonefilter=blob:none` (large WASM files ~1.5 GB not stored locally); when git writes a new tree object, it must traverse all parent blob SHAs, but remote-only blobs cause "fatal: could not fetch <blob-sha> from promisor remote" even with `GIT_NO_LAZY_FETCH=1`.
+
+**Workaround: GitHub API direct commit**
+1. `GET /repos/AnEntrypoint/opencrabs/git/ref/heads/master` → `headSha`
+2. `GET /repos/AnEntrypoint/opencrabs/git/commits/<headSha>` → `treeSha`
+3. `POST /git/blobs` with file content → `blobSha`
+4. `POST /git/trees` with `base_tree: treeSha` + new blob entry → `newTreeSha`
+5. `POST /git/commits` with message, tree, parents → `newCommitSha`
+6. `PATCH /git/refs/heads/master` with `newCommitSha` → push to master
+7. Locally: `git fetch origin master` + `git reset --soft origin/master` to sync
+
+API creates commits without needing local blob objects. Auth: `gh auth token` for Bearer token. Use only for text files after WASM CI pushes; prefer local git for code-only changes.
+
 ## Non-obvious Caveats
 
 - `wc-stack-worker.js` uses `importScripts` (not ES modules) — must be plain global JS, no `import`/`export`
