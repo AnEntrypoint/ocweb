@@ -21,7 +21,7 @@ async function invalidateOnVersionChange() {
   await cache.put(VERSION_URL, new Response(current))
 }
 
-self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('install', e => e.waitUntil(invalidateOnVersionChange().then(() => self.skipWaiting())))
 self.addEventListener('activate', e => e.waitUntil(
   invalidateOnVersionChange().then(() => self.clients.claim()).then(() =>
     self.clients.matchAll({ type: 'window' }).then(clients =>
