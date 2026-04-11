@@ -19,10 +19,10 @@ export async function mount(el, sys) {
   const bg = cs.getPropertyValue('--background').trim() || '#0d0f14'
   const fg = cs.getPropertyValue('--foreground').trim() || '#e8e8e8'
   const term = new window.Terminal({ cursorBlink: true, fontSize: 13, fontFamily: 'monospace', theme: { background: bg, foreground: fg } })
-  const fit = new window.FitAddon()
+  const fit = new window.FitAddon.FitAddon()
   term.loadAddon(fit)
   term.open(el)
-  term.loadAddon(new window.CanvasAddon())
+  term.loadAddon(new window.CanvasAddon.CanvasAddon())
   const ro = new ResizeObserver(() => fit.fit())
   ro.observe(el)
   requestAnimationFrame(() => fit.fit())
