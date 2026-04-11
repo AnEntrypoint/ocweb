@@ -4,6 +4,15 @@
 
 Browser app served from GH Pages. No server-side rendering. `bridge-sw.js` service worker sets COOP/COEP headers on all responses to enable `crossOriginIsolated` (required for SharedArrayBuffer/Atomics).
 
+## WASM Caching Strategy
+
+- `bridge-sw.js` intercepts all same-origin `.wasm` requests and caches them in Cache Storage API (`wasm-chunks` cache)
+- Cache-first serving: SW returns cached response on hit; on miss, fetches, stores, and returns
+- Version key stored under `cache-version` key: concatenation of `nodejs.chunks` + `|` + `layers.json` contents; on SW activate, fetches both manifests, deletes all cache entries if version changed
+- `withCoi()` applied to all responses (cached and network) to set COOP/COEP/CORP headers
+- Worker WASM fetches happen inside Web Workers — not interceptable via `page.on('request')`; verify via `page.evaluate(() => caches.open('wasm-chunks').then(c => c.keys()))`
+- Validated: 64/64 WASM requests served from SW cache (0 network hits) on second page load; opencode layer chunks cached correctly
+
 ## Linux VM (container2wasm WASI mode)
 
 - WASM chunks served from `/containers/nodejs*.wasm`, count from `/containers/nodejs.chunks`
@@ -24,6 +33,7 @@ Browser app served from GH Pages. No server-side rendering. `bridge-sw.js` servi
 - Installs c2w v0.8.4 linux-amd64, runs `c2w --net=browser node:23-alpine`, splits at 50MB, names chunks `nodejs00.wasm` etc.
 - Writes chunk count integer to `containers/nodejs.chunks`
 - Commits and pushes `containers/` to master (requires `contents: write` permission)
+- CI push pattern (both build-wasm and build-layers write-manifest): `git fetch origin master` then `git reset --soft origin/master` then `git restore --staged .` then `git add <files>` then `git commit` then `git push origin HEAD:master`; the `restore --staged` is critical — without it, workflow files from other commits get staged and GitHub rejects the bot push with "refusing to allow a GitHub App to create or update workflow"
 
 ## Non-obvious Caveats
 
