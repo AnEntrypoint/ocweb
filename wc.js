@@ -94,11 +94,14 @@ export function createSystem(id, opts) {
         const { chunks, stackSrc, sharedScripts, workerTools } = await bootAssets()
         const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
         const extraUrls = await fetchLayerUrls(opts.layers)
+        const allChunkUrls = [...Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm'), ...extraUrls]
+        let pi = 0
+        const wasmBuffers = await Promise.all(allChunkUrls.map(u => fetch(u).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.arrayBuffer() }).then(ab => { sys._onProgress && sys._onProgress({ type: 'wasm-progress', loaded: ++pi, total: allChunkUrls.length }); return ab })))
         const mounts = opts.mounts || [{vmPath:'/root', opfsPath:'home/root'}]
         const blobMounts = mounts.map(m => m.desktopHandle ? {vmPath:m.vmPath, type:'desktop'} : m)
         const desktopHandles = mounts.filter(m => m.desktopHandle).map(m => ({vmPath:m.vmPath, handle:m.desktopHandle}))
-        worker = new Worker(makeWorkerBlob(chunks, SHELL_ENV, [workerTools, ...sharedScripts], absImagePrefix, opts.cmd || ['-i'], extraUrls, blobMounts))
-        worker.postMessage({type:'desktop-handles', handles:desktopHandles})
+        worker = new Worker(makeWorkerBlob(SHELL_ENV, [workerTools, ...sharedScripts], opts.cmd || ['-i'], blobMounts))
+        worker.postMessage({type:'desktop-handles', handles:desktopHandles, wasmBuffers}, wasmBuffers)
         worker.onmessage = function(e) {
           const d = e.data; if (!d) return
           if (d.type === 'opfs-init' || d.type === 'desktop-init' || d.type === 'wasm-progress') { sys._onProgress && sys._onProgress(d); return }

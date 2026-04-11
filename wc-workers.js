@@ -1,10 +1,6 @@
 import { desktopBlobSrc } from './wc-workers-desktop.js'
 
-export function makeWorkerBlob(chunks, env, scripts, imagePrefix, cmd = ['-i'], extraUrls = [], mounts = []) {
-  const chunkUrls = [
-    ...Array.from({ length: chunks }, (_, i) => imagePrefix + String(i).padStart(2, '0') + '.wasm'),
-    ...extraUrls,
-  ]
+export function makeWorkerBlob(env, scripts, cmd = ['-i'], mounts = []) {
   const preamble = scripts.join('\n')
   const src = preamble + desktopBlobSrc(mounts) + `
 var ERRNO_INVAL = 28;
@@ -67,7 +63,9 @@ async function opfsMounts(ms) {
   return dirs;
 }
 (async function() {
-var _dh = await new Promise(function(res) { onmessage = function(e) { if (e.data && e.data.type === 'desktop-handles') { onmessage = null; res(e.data.handles || []); } }; });
+var _init = await new Promise(function(res) { onmessage = function(e) { if (e.data && e.data.type === 'desktop-handles') { onmessage = null; res(e.data); } }; });
+var _wasmBuffers = _init.wasmBuffers || [];
+var _dh = _init.handles || [];
 for (var i=0; i<_dh.length; i++) _desktopHandles[_dh[i].vmPath] = _dh[i].handle;
 var _mounts = await opfsMounts(${JSON.stringify(mounts)});
 onmessage = function(msg) {
@@ -78,15 +76,8 @@ onmessage = function(msg) {
     var fds = [undefined, undefined, undefined, certDir, undefined, undefined].concat(_mounts);
     var args = ['arg0', '--net=socket=listenfd=4', '--mac', genmac(), '-entrypoint', '/bin/sh', '--'].concat(${JSON.stringify(cmd)});
     var env = ${JSON.stringify(env)};
-    var urls = ${JSON.stringify(chunkUrls)};
-    var _pi = 0; Promise.all(urls.map(function(u) {
-      return caches.open('wasm-chunks').then(function(cache) {
-        return cache.match(u).then(function(hit) {
-          if (hit) return hit.arrayBuffer();
-          return fetch(u).then(function(r) { if (!r.ok) throw new Error(u + ' ' + r.status); var clone = r.clone(); cache.put(u, clone); return r.arrayBuffer(); });
-        });
-      }).then(function(ab) { postMessage({type:'wasm-progress',loaded:++_pi,total:urls.length}); return ab; });
-    })).then(function(bufs) {
+    var bufsPromise = Promise.resolve(_wasmBuffers);
+    bufsPromise.then(function(bufs) {
       var total = bufs.reduce(function(n, b) { return n + b.byteLength; }, 0);
       var merged = new Uint8Array(total); var off = 0;
       for (var b of bufs) { merged.set(new Uint8Array(b), off); off += b.byteLength; }
