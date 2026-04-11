@@ -101,7 +101,7 @@ export function createSystem(id, opts) {
         worker.postMessage({type:'desktop-handles', handles:desktopHandles})
         worker.onmessage = function(e) {
           const d = e.data; if (!d) return
-          if (d.type === 'opfs-init' || d.type === 'desktop-init') { sys._onProgress && sys._onProgress(d); return }
+          if (d.type === 'opfs-init' || d.type === 'desktop-init' || d.type === 'wasm-progress') { sys._onProgress && sys._onProgress(d); return }
           if (d.type === 'desktop-write') { d.dh.getFileHandle(d.name, {create:true}).then(fh => fh.createWritable()).then(w => w.write(new Uint8Array(d.data)).then(() => w.close())).catch(e => console.error('desktop-write flush failed:', e)) }
         }
         stackWorker = new Worker(makeStackWorkerBlob(stackSrc, sharedScripts))

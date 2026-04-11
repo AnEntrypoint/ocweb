@@ -79,11 +79,8 @@ onmessage = function(msg) {
     var args = ['arg0', '--net=socket=listenfd=4', '--mac', genmac(), '-entrypoint', '/bin/sh', '--'].concat(${JSON.stringify(cmd)});
     var env = ${JSON.stringify(env)};
     var urls = ${JSON.stringify(chunkUrls)};
-    Promise.all(urls.map(function(u) {
-      return fetch(u).then(function(r) {
-        if (!r.ok) throw new Error(u + ' ' + r.status);
-        return r.arrayBuffer();
-      });
+    var _pi = 0; Promise.all(urls.map(function(u) {
+      return fetch(u).then(function(r) { if (!r.ok) throw new Error(u + ' ' + r.status); return r.arrayBuffer(); }).then(function(ab) { postMessage({type:'wasm-progress',loaded:++_pi,total:urls.length}); return ab; });
     })).then(function(bufs) {
       var total = bufs.reduce(function(n, b) { return n + b.byteLength; }, 0);
       var merged = new Uint8Array(total); var off = 0;

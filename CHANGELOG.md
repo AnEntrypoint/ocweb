@@ -1,4 +1,5 @@
 ## [unreleased]
+- feat(systems-panel-progress): wasm-progress postMessage per chunk in worker; forwarded via _onProgress; xterm shows cyan "Loading WASM N/M" vs yellow opfs progress
 - feat(systems-panel-progress): term-view shows "Booting..." then writes \r-overwriting progress lines for opfs-init and desktop-init events; clears after boot; wc-workers-desktop.js: remove unused _desktopVmPaths dead code
 - feat(desktop-fs): add desktop FileSystem mount; showDirectoryPicker in New System dialog (hidden when API unavailable); desktopWalk loads dir tree into RAM via getFile().arrayBuffer(); DesktopOpenFile/DesktopPreopenDir classes with write-back via desktop-write postMessage; worker pre-init desktop-handles rendezvous; wc-workers-desktop.js splits desktop blob src; wc.js posts handles before TtyClient init and flushes writes via createWritable; backward-compat: OPFS mounts unchanged
 

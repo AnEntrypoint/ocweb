@@ -29,7 +29,7 @@ export async function mount(el, sys) {
   let disposed = false
   if (sys.status !== 'ready') {
     term.writeln('\x1b[33mBooting...\x1b[0m')
-    sys._onProgress = d => term.write('\r\x1b[2KLoading ' + d.path + ': ' + d.loaded + '/' + d.total)
+    sys._onProgress = d => term.write(d.type === 'wasm-progress' ? '\r\x1b[2K\x1b[36mLoading WASM ' + d.loaded + '/' + d.total + '\x1b[0m' : '\r\x1b[2K\x1b[33m' + d.path + ': ' + d.loaded + '/' + d.total + '\x1b[0m')
     await new Promise((resolve, reject) => {
       const unsub = sys.onStatus(s => {
         if (s === 'ready') { unsub(); resolve() }
