@@ -1,11 +1,12 @@
 import { desktopBlobSrc } from './wc-workers-desktop.js'
 
-export function makeWorkerBlob(env, scripts, cmd = ['-i'], mounts = []) {
+export function makeWorkerBlob(env, scripts, cmd = ['-i'], mounts = [], idbMounts = []) {
   const preamble = scripts.join('\n')
   const src = preamble + desktopBlobSrc(mounts) + `
 var ERRNO_INVAL = 28;
 var ERRNO_AGAIN = 6;
 var _opfsSyncHandles = new Map();
+var _opfsPendingHandles = new Map();
 async function opfsNavigate(p) {
   if (!navigator.storage) throw new Error('OPFS unavailable');
   var r = await navigator.storage.getDirectory();
@@ -20,19 +21,67 @@ async function opfsWalk(dh, vp, out) {
   for (var i=0; i<es.length; i++) {
     var n=es[i][0], h=es[i][1];
     if (h.kind === 'file') {
-      var sh = await (await dh.getFileHandle(n)).createSyncAccessHandle();
-      var buf = new Uint8Array(sh.getSize());
-      if (buf.length) sh.read(buf, {at:0});
-      var f = new File(buf); _opfsSyncHandles.set(f, sh); out[n] = f;
+      var fh = await dh.getFileHandle(n);
+      var sh = null;
+      try { sh = await fh.createSyncAccessHandle(); } catch(e) {}
+      if (sh) {
+        (function(sh) {
+          var _sz = sh.getSize();
+          var f = new File(new ArrayBuffer(0));
+          Object.defineProperty(f, 'size', { get: function() { return _sz; } });
+          f.data = { byteLength: _sz, slice: function(s,e) { var b=new Uint8Array(e-s); sh.read(b,{at:s}); return b; } };
+          _opfsSyncHandles.set(f, sh); out[n] = f;
+        })(sh);
+      } else {
+        var data = new Uint8Array(await (await fh.getFile()).arrayBuffer());
+        out[n] = new File(data);
+      }
     } else { out[n] = new Directory(await opfsWalk(h, vp+'/'+n)); }
     postMessage({type:'opfs-init', path:vp, loaded:i+1, total:es.length});
   }
   return out;
 }
 class OPFSOpenFile extends OpenFile {
+  fd_read(mem, vecs) {
+    var sh = _opfsSyncHandles.get(this.file);
+    if (!sh) return OpenFile.prototype.fd_read.call(this, mem, vecs);
+    var nread = 0;
+    for (var v of vecs) {
+      var pos = Number(this.file_pos);
+      var len = v.buf_len;
+      if (len === 0) continue;
+      var buf = new Uint8Array(len);
+      var got = sh.read(buf, {at: pos});
+      if (got === 0) break;
+      mem.set(buf.subarray(0, got), v.buf);
+      this.file_pos += BigInt(got);
+      nread += got;
+    }
+    return {ret: 0, nread};
+  }
+  fd_seek(off, whence) {
+    var sh = _opfsSyncHandles.get(this.file);
+    var size = sh ? sh.getSize() : 0;
+    var s;
+    if (whence === 0) s = off;
+    else if (whence === 1) s = this.file_pos + off;
+    else if (whence === 2) s = BigInt(size) + off;
+    else return {ret: 28, offset: 0};
+    if (s < 0) return {ret: 28, offset: 0};
+    this.file_pos = BigInt(s);
+    return {ret: 0, offset: s};
+  }
   fd_write(m, v) {
     var r = OpenFile.prototype.fd_write.call(this, m, v);
-    if (r.ret === 0) { var sh = _opfsSyncHandles.get(this.file); if (sh) { sh.truncate(0); sh.write(this.file.data, {at:0}); sh.flush(); } }
+    if (r.ret === 0) {
+      var sh = _opfsSyncHandles.get(this.file);
+      if (sh) { sh.truncate(0); sh.write(this.file.data, {at:0}); sh.flush(); }
+      else {
+        var file = this.file;
+        var p = _opfsPendingHandles.get(file);
+        if (p) p.then(function(s) { if (s) { s.truncate(0); s.write(file.data, {at:0}); s.flush(); } });
+      }
+    }
     return r;
   }
 }
@@ -43,7 +92,8 @@ class OPFSPreopenDir extends PreopenDirectory {
     if (r.ret === 0 && r.fd_obj instanceof OpenFile) {
       if (!_opfsSyncHandles.has(r.fd_obj.file)) {
         var file = r.fd_obj.file, fname = p.split('/').pop(), dh = this._dh;
-        dh.getFileHandle(fname, {create:true}).then(function(fh) { return fh.createSyncAccessHandle(); }).then(function(sh) { _opfsSyncHandles.set(file, sh); });
+        var shPromise = dh.getFileHandle(fname, {create:true}).then(function(fh) { return fh.createSyncAccessHandle(); }).then(function(sh) { _opfsSyncHandles.set(file, sh); _opfsPendingHandles.delete(file); return sh; });
+        _opfsPendingHandles.set(file, shPromise);
       }
       var w = new OPFSOpenFile(r.fd_obj.file); w.file_pos = r.fd_obj.file_pos; return {ret:0, fd_obj:w};
     }
@@ -62,13 +112,37 @@ async function opfsMounts(ms) {
   }
   return dirs;
 }
+async function idbReadMounts(idbMountsData) {
+  var byPath = {};
+  for (var m of idbMountsData) {
+    var buf = await new Promise(function(res, rej) {
+      var req = indexedDB.open('opencrabs-layers', 1);
+      req.onupgradeneeded = function(e) { e.target.result.createObjectStore('layer-binaries'); };
+      req.onsuccess = function() {
+        var db = req.result;
+        var tx = db.transaction('layer-binaries', 'readonly');
+        var r2 = tx.objectStore('layer-binaries').get(m.idbKey);
+        r2.onsuccess = function() { db.close(); res(r2.result); };
+        r2.onerror = function() { db.close(); rej(r2.error); };
+      };
+      req.onerror = function() { rej(req.error); };
+    });
+    if (buf) {
+      if (!byPath[m.vmPath]) byPath[m.vmPath] = {};
+      byPath[m.vmPath][m.binaryName] = new File(new Uint8Array(buf));
+    }
+  }
+  var dirs = [];
+  for (var vmPath in byPath) dirs.push(new PreopenDirectory(vmPath, byPath[vmPath]));
+  return dirs;
+}
 (async function() {
 var _pending = [];
 var _init = await new Promise(function(res) { onmessage = function(e) { if (e.data && e.data.type === 'desktop-handles') { onmessage = function(e2) { _pending.push(e2); }; res(e.data); } }; });
 var _wasmBuffers = _init.wasmBuffers || [];
 var _dh = _init.handles || [];
 for (var i=0; i<_dh.length; i++) _desktopHandles[_dh[i].vmPath] = _dh[i].handle;
-var _mounts = await opfsMounts(${JSON.stringify(mounts)});
+var _mounts = (await opfsMounts(${JSON.stringify(mounts)})).concat(await idbReadMounts(${JSON.stringify(idbMounts)}));
 function _realHandler(msg) {
   if (serveIfInitMsg(msg)) return;
   var ttyClient = new TtyClient(msg.data);
