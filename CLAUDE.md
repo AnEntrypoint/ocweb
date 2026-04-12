@@ -12,6 +12,7 @@ Browser app served from GH Pages. No server-side rendering. `bridge-sw.js` servi
 - `withCoi()` applied to all responses (cached and network) to set COOP/COEP/CORP headers
 - Worker WASM fetches happen inside Web Workers — not interceptable via `page.on('request')`; verify via `page.evaluate(() => caches.open('wasm-chunks').then(c => c.keys()))`
 - Validated: 64/64 WASM requests served from SW cache (0 network hits) on second page load; opencode layer chunks cached correctly
+- GH Pages throttles concurrent large requests: fetching 32×50MB chunks via `Promise.all` triggers `TypeError: Failed to fetch` around chunk 19. Fix: batch fetches to 4 concurrent per batch (sequential batches). Max 4 concurrent = 200MB peak, avoids GH Pages throttling. Commit f66fde2b3c.
 
 ## Linux VM (container2wasm WASI mode)
 
