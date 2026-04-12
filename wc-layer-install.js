@@ -45,7 +45,7 @@ function idbPut(key, value) {
   }))
 }
 
-function idbGet(key) {
+export function idbGet(key) {
   return idbLayerDb().then(db => new Promise((resolve, reject) => {
     const tx = db.transaction('layer-binaries', 'readonly')
     const r2 = tx.objectStore('layer-binaries').get(key)

@@ -1,5 +1,5 @@
 import { makeWorkerBlob, makeStackWorkerBlob } from './wc-workers.js'
-import { installLayerBinaries } from './wc-layer-install.js'
+import { installLayerBinaries, idbGet } from './wc-layer-install.js'
 
 const DEMO_BASE = 'https://ktock.github.io/container2wasm-demo'
 const XTERM_PTY_CDN = './vendor'
@@ -84,7 +84,7 @@ export function createSystem(id, opts) {
         const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
         const _layerResult = await installLayerBinaries(opts.layers || [])
         const { mounts: _lm, idbMounts, extraPaths } = _layerResult
-        const allChunkUrls = Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm')
+const allChunkUrls = Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm')
         let pi = 0
         const wasmBuffers = []
         for (let bi = 0; bi < allChunkUrls.length; bi += 4) {
@@ -108,13 +108,15 @@ export function createSystem(id, opts) {
         const desktopHandles = mounts.filter(m => m.desktopHandle).map(m => ({vmPath:m.vmPath, handle:m.desktopHandle}))
         const _env = extraPaths && extraPaths.length ? SHELL_ENV.map(e => e.startsWith('PATH=') ? 'PATH=' + extraPaths.join(':') + ':' + e.slice(5) : e) : SHELL_ENV
         const _cmd = opts.cmd || ['-i']
+        const layerBuffers = await Promise.all((idbMounts || []).map(m => idbGet(m.idbKey)))
         worker = new Worker(makeWorkerBlob(_env, [workerTools, ...sharedScripts], _cmd, blobMounts, idbMounts || []))
         worker.onerror = e => console.error('worker error [' + id + ']:', e.message, e.filename + ':' + e.lineno)
-        worker.postMessage({type:'desktop-handles', handles:desktopHandles, wasmBuffers}, wasmBuffers)
+        const _layerTransfers = layerBuffers.filter(Boolean)
+        worker.postMessage({type:'desktop-handles', handles:desktopHandles, wasmBuffers, layerBuffers}, [...wasmBuffers, ..._layerTransfers])
         worker.onmessage = function(e) {
           const d = e.data; if (!d) return
           if (d.type === 'opfs-init' || d.type === 'desktop-init' || d.type === 'wasm-progress') { sys._onProgress && sys._onProgress(d); return }
-          if (d.type === 'desktop-write') { d.dh.getFileHandle(d.name, {create:true}).then(fh => fh.createWritable()).then(w => w.write(new Uint8Array(d.data)).then(() => w.close())).catch(e => console.error('desktop-write flush failed:', e)) }
+if (d.type === 'desktop-write') { d.dh.getFileHandle(d.name, {create:true}).then(fh => fh.createWritable()).then(w => w.write(new Uint8Array(d.data)).then(() => w.close())).catch(e => console.error('desktop-write flush failed:', e)) }
         }
         stackWorker = new Worker(makeStackWorkerBlob(stackSrc, sharedScripts))
         nwStack = window.newStack(worker, IMAGE_PREFIX, chunks, stackWorker, DEMO_BASE + '/src/c2w-net-proxy.wasm')

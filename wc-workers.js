@@ -112,21 +112,11 @@ async function opfsMounts(ms) {
   }
   return dirs;
 }
-async function idbReadMounts(idbMountsData) {
+function idbReadMounts(idbMountsData, layerBuffers) {
   var byPath = {};
-  for (var m of idbMountsData) {
-    var buf = await new Promise(function(res, rej) {
-      var req = indexedDB.open('opencrabs-layers', 1);
-      req.onupgradeneeded = function(e) { e.target.result.createObjectStore('layer-binaries'); };
-      req.onsuccess = function() {
-        var db = req.result;
-        var tx = db.transaction('layer-binaries', 'readonly');
-        var r2 = tx.objectStore('layer-binaries').get(m.idbKey);
-        r2.onsuccess = function() { db.close(); res(r2.result); };
-        r2.onerror = function() { db.close(); rej(r2.error); };
-      };
-      req.onerror = function() { rej(req.error); };
-    });
+  for (var i = 0; i < idbMountsData.length; i++) {
+    var m = idbMountsData[i];
+    var buf = layerBuffers && layerBuffers[i];
     if (buf) {
       if (!byPath[m.vmPath]) byPath[m.vmPath] = {};
       byPath[m.vmPath][m.binaryName] = new File(new Uint8Array(buf));
@@ -142,7 +132,7 @@ var _init = await new Promise(function(res) { onmessage = function(e) { if (e.da
 var _wasmBuffers = _init.wasmBuffers || [];
 var _dh = _init.handles || [];
 for (var i=0; i<_dh.length; i++) _desktopHandles[_dh[i].vmPath] = _dh[i].handle;
-var _mounts = (await opfsMounts(${JSON.stringify(mounts)})).concat(await idbReadMounts(${JSON.stringify(idbMounts)}));
+var _mounts = (await opfsMounts(${JSON.stringify(mounts)})).concat(idbReadMounts(${JSON.stringify(idbMounts)}, _init.layerBuffers));
 function _realHandler(msg) {
   if (serveIfInitMsg(msg)) return;
   var ttyClient = new TtyClient(msg.data);
