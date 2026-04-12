@@ -116,7 +116,7 @@ async function mountTerminal(el, sysRecord, tid, actor) {
   const termEl = document.createElement('div')
   termEl.style.cssText = 'width:100%;height:100%'
   el.appendChild(termEl)
-  const cmd = (!term.cmd || term.cmd === 'sh -i') ? undefined : ['sh', '-c', 'exec ' + term.cmd]
+  const cmd = (!term.cmd || term.cmd === 'sh -i') ? undefined : ['-c', 'exec ' + term.cmd]
   const mounts = _desktopHandles.get(sysRecord.id)
   const sys = createSystem(term.wcId, { mode: sysRecord.mode, layers: sysRecord.layers, cmd, mounts })
   _termSystems.set(tid, sys)

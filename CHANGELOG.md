@@ -1,4 +1,5 @@
 ## [unreleased]
+- fix(systems-panel): fix cmd construction — remove leading 'sh' from cmd array; WASM entrypoint is already /bin/sh via -entrypoint flag; ['sh','-c','exec opencode'] caused sh to try to open a file named 'sh'; fix: ['-c','exec opencode']
 - fix(wc-workers): use WebAssembly.compileStreaming(fetch(blobUrl)) instead of WebAssembly.instantiate(buffer) — compileStreaming bypasses Chrome's 1 GB buffer limit; opencode WASM alone is 1.51 GB which exceeds instantiate() max; blob URL created from merged Uint8Array, revoked after compile
 - fix(wc): skip nodejs base chunks when layer extraUrls present — layer WASMs (built from node:23-alpine) include node; concatenating base+layer = 1.62 GB, exceeding Chrome's 1 GB WebAssembly.instantiate() limit; fix: baseUrls=[] when extraUrls.length>0
 - fix(wc): fetch WASM chunks in batches of 4 instead of all-concurrent Promise.all — prevents ERR_FAILED on GH Pages when 32×50MB requests fire simultaneously
