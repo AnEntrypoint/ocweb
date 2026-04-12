@@ -137,6 +137,14 @@ export function createSystem(id, opts) {
     spawnShell: async function(onData) {
       if (!worker || status !== 'ready') return null
       const { master, slave } = window.openpty()
+      const _origRead = slave.read.bind(slave)
+      const _cpr = /\x1b\[\d+;\d+R/g
+      slave.read = function() {
+        const bytes = _origRead()
+        if (!bytes || !bytes.length) return bytes
+        const str = bytes.map(b => String.fromCharCode(b)).join('').replace(_cpr, '')
+        return [...str].map(c => c.charCodeAt(0))
+      }
       onData({ xtermAddon: master })
       await new Promise(r => setTimeout(r, 50))
       new window.TtyServer(slave).start(worker, nwStack)

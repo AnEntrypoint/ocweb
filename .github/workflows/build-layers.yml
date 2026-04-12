@@ -30,7 +30,7 @@ jobs:
         run: |
           mkdir -p workspace
           printf 'FROM node:23-alpine\nRUN npm install -g ${{ matrix.pkg }} --no-fund --no-audit && npm cache clean --force\n' > workspace/Dockerfile
-          docker build -t layer-${{ matrix.id }}:latest workspace/
+          docker build --no-cache -t layer-${{ matrix.id }}:latest workspace/
           c2w --build-arg=WASI_NET=browser layer-${{ matrix.id }}:latest workspace/out.wasm
           ls -la workspace/out.wasm
       - name: split wasm
