@@ -19,6 +19,7 @@ export async function mount(el, sys) {
   const bg = cs.getPropertyValue('--background').trim() || '#0d0f14'
   const fg = cs.getPropertyValue('--foreground').trim() || '#e8e8e8'
   const term = new window.Terminal({ cursorBlink: true, fontSize: 13, fontFamily: 'monospace', theme: { background: bg, foreground: fg } })
+  window.__debug = window.__debug || {}; window.__debug.terms = window.__debug.terms || {}; window.__debug.terms[sys.id] = term
   const fit = new window.FitAddon.FitAddon()
   term.loadAddon(fit)
   term.open(el)

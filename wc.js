@@ -83,7 +83,7 @@ export function createSystem(id, opts) {
         const { chunks, stackSrc, sharedScripts, workerTools } = await bootAssets()
         const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
         const _layerResult = await installLayerBinaries(opts.layers || [])
-        const { mounts: _lm, extraPaths } = _layerResult
+        const { mounts: _lm, idbMounts, extraPaths } = _layerResult
         const allChunkUrls = Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm')
         let pi = 0
         const wasmBuffers = []
@@ -107,7 +107,8 @@ export function createSystem(id, opts) {
         const blobMounts = mounts.map(m => m.desktopHandle ? {vmPath:m.vmPath, type:'desktop'} : m)
         const desktopHandles = mounts.filter(m => m.desktopHandle).map(m => ({vmPath:m.vmPath, handle:m.desktopHandle}))
         const _env = extraPaths && extraPaths.length ? SHELL_ENV.map(e => e.startsWith('PATH=') ? 'PATH=' + extraPaths.join(':') + ':' + e.slice(5) : e) : SHELL_ENV
-        worker = new Worker(makeWorkerBlob(_env, [workerTools, ...sharedScripts], opts.cmd || ['-i'], blobMounts))
+        const _cmd = opts.cmd || ['-i']
+        worker = new Worker(makeWorkerBlob(_env, [workerTools, ...sharedScripts], _cmd, blobMounts, idbMounts || []))
         worker.onerror = e => console.error('worker error [' + id + ']:', e.message, e.filename + ':' + e.lineno)
         worker.postMessage({type:'desktop-handles', handles:desktopHandles, wasmBuffers}, wasmBuffers)
         worker.onmessage = function(e) {
@@ -156,6 +157,7 @@ export function createSystem(id, opts) {
     window.__debug.wc.registry = _registry
     window.__debug.wc[id] = sys
     Object.defineProperty(sys, '_worker', { get: () => worker })
+    Object.defineProperty(sys, '_stackWorker', { get: () => stackWorker })
   }
   return sys
 }

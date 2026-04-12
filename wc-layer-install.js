@@ -27,29 +27,69 @@ async function extractBinaryFromTgz(url, binaryName) {
   throw new Error('binary not found in tgz: ' + binaryName)
 }
 
+function idbPut(dbName, storeName, key, value) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(dbName, 3)
+    req.onupgradeneeded = e => {
+      const db = e.target.result
+      if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings')
+      if (!db.objectStoreNames.contains('agents')) db.createObjectStore('agents', { keyPath: 'agentId' })
+      if (!db.objectStoreNames.contains('files')) db.createObjectStore('files')
+      if (!db.objectStoreNames.contains('history')) db.createObjectStore('history')
+      if (!db.objectStoreNames.contains('layer-binaries')) db.createObjectStore('layer-binaries')
+    }
+    req.onsuccess = () => {
+      const db = req.result
+      const tx = db.transaction(storeName, 'readwrite')
+      tx.objectStore(storeName).put(value, key)
+      tx.oncomplete = () => { db.close(); resolve() }
+      tx.onerror = () => { db.close(); reject(tx.error) }
+    }
+    req.onerror = () => reject(req.error)
+  })
+}
+
+function idbGet(dbName, storeName, key) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(dbName, 3)
+    req.onupgradeneeded = e => {
+      const db = e.target.result
+      if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings')
+      if (!db.objectStoreNames.contains('agents')) db.createObjectStore('agents', { keyPath: 'agentId' })
+      if (!db.objectStoreNames.contains('files')) db.createObjectStore('files')
+      if (!db.objectStoreNames.contains('history')) db.createObjectStore('history')
+      if (!db.objectStoreNames.contains('layer-binaries')) db.createObjectStore('layer-binaries')
+    }
+    req.onsuccess = () => {
+      const db = req.result
+      const tx = db.transaction(storeName, 'readonly')
+      const r2 = tx.objectStore(storeName).get(key)
+      r2.onsuccess = () => { db.close(); resolve(r2.result) }
+      r2.onerror = () => { db.close(); reject(r2.error) }
+    }
+    req.onerror = () => reject(req.error)
+  })
+}
+
 export async function installLayerBinaries(layerIds) {
-  if (!layerIds || !layerIds.length) return { mounts: [], extraPaths: [] }
+  if (!layerIds || !layerIds.length) return { mounts: [], idbMounts: [], extraPaths: [] }
   const r = await fetch('./containers/layers.json')
   if (!r.ok) throw new Error('layers.json fetch failed: ' + r.status)
   const all = await r.json()
-  const mounts = [], extraPaths = []
+  const mounts = [], idbMounts = [], extraPaths = []
   for (const id of layerIds) {
     const layer = all.find(l => l.id === id)
-    if (!layer || !layer.binaryUrl) continue
-    const root = await navigator.storage.getDirectory()
-    const toolsDir = await root.getDirectoryHandle('tools', {create:true})
-    const layerDir = await toolsDir.getDirectoryHandle(id, {create:true})
-    let exists = false
-    try { await layerDir.getFileHandle(layer.binaryName); exists = true } catch(e) {}
-    if (!exists) {
+    if (!layer || !layer.binaryUrl || !layer.binaryName) continue
+    const idbKey = 'layer:' + id + ':' + layer.binaryName
+    let existing = await idbGet('opencrabs', 'layer-binaries', idbKey)
+    if (!existing) {
       const bytes = await extractBinaryFromTgz(layer.binaryUrl, layer.binaryName)
-      const fh = await layerDir.getFileHandle(layer.binaryName, {create:true})
-      const w = await fh.createWritable()
-      await w.write(bytes)
-      await w.close()
+      await idbPut('opencrabs', 'layer-binaries', idbKey, bytes.buffer)
+      existing = bytes.buffer
     }
-    mounts.push({ vmPath: layer.binaryVmPath, opfsPath: 'tools/' + id })
-    extraPaths.push(layer.binaryVmPath)
+    const vmPath = '/opt/' + id
+    extraPaths.push(vmPath)
+    idbMounts.push({ vmPath, idbKey, binaryName: layer.binaryName })
   }
-  return { mounts, extraPaths }
+  return { mounts, idbMounts, extraPaths }
 }
