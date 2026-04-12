@@ -96,18 +96,23 @@ export function createSystem(id, opts) {
         const extraUrls = await fetchLayerUrls(opts.layers)
         const allChunkUrls = [...Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm'), ...extraUrls]
         let pi = 0
-        const wasmBuffers = await Promise.all(allChunkUrls.map(async u => {
-          const cache = await caches.open('wasm-chunks')
-          const hit = await cache.match(u)
-          if (hit) { const ab = await hit.arrayBuffer(); sys._onProgress && sys._onProgress({ type: 'wasm-progress', loaded: ++pi, total: allChunkUrls.length }); return ab }
-          const r = await fetch(u)
-          if (!r.ok) throw new Error(u + ' ' + r.status)
-          const clone = r.clone()
-          const ab = await r.arrayBuffer()
-          await cache.put(u, clone)
-          sys._onProgress && sys._onProgress({ type: 'wasm-progress', loaded: ++pi, total: allChunkUrls.length })
-          return ab
-        }))
+        const wasmBuffers = []
+        for (let bi = 0; bi < allChunkUrls.length; bi += 4) {
+          const batch = allChunkUrls.slice(bi, bi + 4)
+          const bufs = await Promise.all(batch.map(async u => {
+            const cache = await caches.open('wasm-chunks')
+            const hit = await cache.match(u)
+            if (hit) { const ab = await hit.arrayBuffer(); sys._onProgress && sys._onProgress({ type: 'wasm-progress', loaded: ++pi, total: allChunkUrls.length }); return ab }
+            const r = await fetch(u)
+            if (!r.ok) throw new Error(u + ' ' + r.status)
+            const clone = r.clone()
+            const ab = await r.arrayBuffer()
+            await cache.put(u, clone)
+            sys._onProgress && sys._onProgress({ type: 'wasm-progress', loaded: ++pi, total: allChunkUrls.length })
+            return ab
+          }))
+          wasmBuffers.push(...bufs)
+        }
         const mounts = opts.mounts || [{vmPath:'/root', opfsPath:'home/root'}]
         const blobMounts = mounts.map(m => m.desktopHandle ? {vmPath:m.vmPath, type:'desktop'} : m)
         const desktopHandles = mounts.filter(m => m.desktopHandle).map(m => ({vmPath:m.vmPath, handle:m.desktopHandle}))
