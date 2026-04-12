@@ -94,7 +94,8 @@ export function createSystem(id, opts) {
         const { chunks, stackSrc, sharedScripts, workerTools } = await bootAssets()
         const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
         const extraUrls = await fetchLayerUrls(opts.layers)
-        const allChunkUrls = [...Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm'), ...extraUrls]
+        const baseUrls = extraUrls.length ? [] : Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm')
+        const allChunkUrls = [...baseUrls, ...extraUrls]
         let pi = 0
         const wasmBuffers = []
         for (let bi = 0; bi < allChunkUrls.length; bi += 4) {
