@@ -18,6 +18,31 @@ jobs:
         run: |
           c2w --build-arg=WASI_NET=browser --build-arg=VM_MEMORY_SIZE_MB=512 alpine:3.20 out.wasm
           ls -la out.wasm
+      - name: patch wasm
+        run: |
+          node -e "
+          const fs = require('fs');
+          const buf = fs.readFileSync('out.wasm');
+          let patches = 0;
+          for (let i = 0; i < buf.length - 5; i++) {
+            if (buf[i]===0x41 && buf[i+1]===0x80 && buf[i+2]===0x80 && buf[i+3]===0x02 && buf[i+4]===0x3b) {
+              buf[i+1]=0xED; buf[i+2]=0x83; patches++;
+            }
+          }
+          const brtable = [0x0e,0x06,0x01,0x02,0x00,0x05,0x04,0x03,0x06];
+          for (let i = 0; i < buf.length - 80; i++) {
+            let match = true;
+            for (let j = 0; j < brtable.length; j++) if (buf[i+j]!==brtable[j]) { match=false; break; }
+            if (!match) continue;
+            for (let k = i; k < i + 80; k++) {
+              if (buf[k]===0x41 && buf[k+1]===0x80 && buf[k+2]===0x80 && buf[k+3]===0x02 && buf[k+4]===0x72) {
+                buf[k+1]=0xED; buf[k+2]=0x83; patches++; break;
+              }
+            }
+          }
+          fs.writeFileSync('out.wasm', buf);
+          console.log('applied', patches, 'OPFS execute permission patches');
+          "
       - name: split wasm
         run: |
           rm -f containers/nodejs*.wasm
