@@ -16,7 +16,9 @@ jobs:
           sudo mv c2w /usr/local/bin/c2w
       - name: build alpine wasm
         run: |
-          c2w --build-arg=WASI_NET=browser --build-arg=VM_MEMORY_SIZE_MB=512 alpine:3.20 out.wasm
+          printf 'FROM alpine:edge AS libs\nRUN apk add --no-cache libstdc++ libgcc\nFROM alpine:3.20\nCOPY --from=libs /usr/lib/libstdc++.so.6 /usr/lib/libstdc++.so.6\nCOPY --from=libs /usr/lib/libgcc_s.so.1 /usr/lib/libgcc_s.so.1\n' > Dockerfile
+          docker build -t alpine-gcc15 .
+          c2w --build-arg=WASI_NET=browser --build-arg=VM_MEMORY_SIZE_MB=512 alpine-gcc15 out.wasm
           ls -la out.wasm
       - name: patch wasm
         run: |
