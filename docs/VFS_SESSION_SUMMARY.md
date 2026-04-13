@@ -63,41 +63,53 @@ Design and implement a persistent VFS layer to solve SQLite WAL failures in open
 
 ## Remaining Work (Phase 5: Testing & Boot Restoration)
 
-### 1. Boot-Time Restoration ⏳
-**Scope**: Implement vfs-restore in worker blob source
+### 1. Boot-Time Restoration ✅
+**Completed**: Commit 4f82598
 
-**What's needed**:
-- Add `restoreToolData()` function in worker blob (wc-workers.js string template)
-- postMessage {type:'vfs-restore', toolIds} after opfsWalk completes
-- Receive ack with file list, populate in-memory filesystem
-- Call restoreToolData() before TtyServer.start()
+- Added `_restorePromise` in worker blob _realHandler
+- postMessage {type:'vfs-restore', toolIds:['opencode','claude','kilo','codex']} after mount setup
+- Receive ack with file list via timeout-based handler (5s fallback)
+- Await restore via Promise.all before WASM instantiation
 
-**Code location**: wc-workers.js, blob source generation (~line 279-500)
-
-### 2. vfs-restore Handler in wc.js ⏳
-**Scope**: Handle restoration postMessages
-
-**What's needed**:
+**Implementation**:
 ```javascript
-if (d.type === 'vfs-restore') {
-  vfsIDB.restoreForVm(d.toolIds)
-    .then(files => worker.postMessage({type:'vfs-restore-ack', files}))
-    .catch(e => worker.postMessage({type:'vfs-restore-ack', files:[], error:e.message}))
+var _restorePromise = new Promise(function(res) {
+  postMessage({type:'vfs-restore', toolIds:['opencode', 'claude', 'kilo', 'codex']});
+  var _oldHandler = onmessage;
+  onmessage = function(e) {
+    if (e.data && e.data.type === 'vfs-restore-ack') {
+      onmessage = _oldHandler;
+      res(e.data.files || []);
+    }
+  };
+  setTimeout(function() { onmessage = _oldHandler; res([]); }, 5000);
+});
+```
+
+### 2. vfs-restore Handler in wc.js ✅
+**Completed**: Commit 4f82598
+
+Implemented in worker.onmessage:
+```javascript
+if (d.type === 'vfs-restore') { 
+  vfsIDB.restoreForVm(d.toolIds).then(files => 
+    worker.postMessage({type:'vfs-restore-ack', files})
+  ).catch(e => { 
+    console.error('[vfs-restore] failed:', e.message); 
+    worker.postMessage({type:'vfs-restore-ack', files:[], error:e.message}); 
+  }); 
+  return 
 }
 ```
 
-### 3. Layer Configuration ⏳
-**Scope**: Add idbMounts to layers.json
+### 3. Layer Configuration ✅
+**Completed**: Commit 4f82598
 
-**What's needed**:
-```json
-{
-  "id": "opencode",
-  ...,
-  "idbMounts": ["/root/.local/share/opencode"],
-  ...
-}
-```
+Updated containers/layers.json opencode entry:
+- Added `"idbMounts": ["/root/.local/share/opencode"]`
+- Removed `"extraEnv": ["XDG_DATA_HOME=/tmp"]` workaround
+
+Updated wc.js to extract idbMounts from layers.json and pass to makeWorkerBlob
 
 ### 4. End-to-End Testing ⏳
 **Scope**: Validate in browser
@@ -126,6 +138,14 @@ if (d.type === 'vfs-restore') {
    - fd_write interception logic
    - wc.js integration (import, IDB init, postMessage handler)
    - window.__debug.vfs exposure
+
+4. **4f82598** — `feat(vfs): implement boot-time restoration and complete Phase 1 JS interception`
+   - vfs-restore postMessage in worker blob after mount setup
+   - Timeout-based ack handling (5s fallback)
+   - Promise.all pattern to wait for restore before WASM instantiation
+   - vfs-restore handler in wc.js
+   - idbMounts extraction from layers.json
+   - Removed XDG_DATA_HOME workaround from opencode layer
 
 ## Architecture Decision Rationale
 
@@ -211,8 +231,9 @@ if (d.type === 'vfs-restore') {
 - ✅ `docs/VFS_ARCHITECTURE.md` (389 lines) — comprehensive design
 - ✅ `docs/VFS_IMPLEMENTATION_STEPS.md` (278 lines) — step-by-step guide
 - ✅ `vfs-idb.js` (193 lines) — IndexedDB interface
-- ✅ `wc-workers.js` (modified) — path tracking and fd_write interception
-- ✅ `wc.js` (modified) — IDB integration and postMessage handling
+- ✅ `wc-workers.js` (modified, +16 net) — boot-restore postMessage and Promise.all pattern
+- ✅ `wc.js` (modified, +14 net) — vfs-restore handler and idbMounts extraction
+- ✅ `containers/layers.json` (modified) — idbMounts config, removed XDG_DATA_HOME
 - ✅ `docs/VFS_SESSION_SUMMARY.md` (this file) — session recap
 
 ## Code Statistics
