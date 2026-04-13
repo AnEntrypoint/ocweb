@@ -77,5 +77,6 @@ export async function installLayerBinaries(layerIds) {
   }
   const extraPaths = ['/root/.local/bin']
   const extraLibPaths = hasLibs ? ['/root/.local/lib'] : []
-  return { mounts: [], extraPaths, extraLibPaths }
+  const preloadLibs = hasLibs ? ['/root/.local/lib/libgcc_s.so.1', '/root/.local/lib/libstdc++.so.6'] : []
+  return { mounts: [], extraPaths, extraLibPaths, preloadLibs }
 }
