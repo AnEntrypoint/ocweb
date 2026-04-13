@@ -1,5 +1,6 @@
 import { makeWorkerBlob, makeStackWorkerBlob } from './wc-workers.js'
 import { installLayerBinaries } from './wc-layer-install.js'
+import * as vfsIDB from './vfs-idb.js'
 
 const DEMO_BASE = 'https://ktock.github.io/container2wasm-demo'
 const XTERM_PTY_CDN = './vendor'
@@ -46,6 +47,7 @@ async function fetchAndExecScript(src) {
 
 export function bootAssets() {
   if (!_assetsPromise) _assetsPromise = (async () => {
+    await vfsIDB.initializeIDB()
     const [chunks, stackSrc, workerTools, shim, wasiDefs, workerUtil, wasiUtil, xtermJs, stackJs] = await Promise.all([
       fetchChunkCount(),
       fetchText(STACK_WORKER_URL),
@@ -118,6 +120,7 @@ export function createSystem(id, opts) {
 if (d.type === 'opfs-init' || d.type === 'desktop-init' || d.type === 'wasm-progress') { sys._onProgress && sys._onProgress(d); return }
           if (d.type === 'wc-debug') { console.log('[wc-debug]', JSON.stringify(d)); return }
           if (d.type === 'desktop-write') { d.dh.getFileHandle(d.name, {create:true}).then(fh => fh.createWritable()).then(w => w.write(new Uint8Array(d.data)).then(() => w.close())).catch(e => console.error('desktop-write flush failed:', e)) }
+          if (d.type === 'vfs-write') { vfsIDB.writeFile(d.toolId, d.path, d.data).catch(err => console.error('[vfs-write] failed:', d.path, err.message)) }
         }
         stackWorker = new Worker(makeStackWorkerBlob(stackSrc, sharedScripts))
         nwStack = window.newStack(worker, IMAGE_PREFIX, chunks, stackWorker, DEMO_BASE + '/src/c2w-net-proxy.wasm')
@@ -183,3 +186,4 @@ export async function wcGit() { return null }
 
 window.__debug = window.__debug || {}
 window.__debug.wc = { registry: _registry, get default() { return _default } }
+window.__debug.vfs = vfsIDB
