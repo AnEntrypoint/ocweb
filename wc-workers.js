@@ -299,6 +299,17 @@ var _mounts = (await opfsMounts(${JSON.stringify(mounts)})).concat(idbReadMounts
 function _realHandler(msg) {
   if (serveIfInitMsg(msg)) return;
   var ttyClient = new TtyClient(msg.data);
+  var _restorePromise = new Promise(function(res) {
+    postMessage({type:'vfs-restore', toolIds:['opencode', 'claude', 'kilo', 'codex']});
+    var _oldHandler = onmessage;
+    onmessage = function(e) {
+      if (e.data && e.data.type === 'vfs-restore-ack') {
+        onmessage = _oldHandler;
+        res(e.data.files || []);
+      }
+    };
+    setTimeout(function() { onmessage = _oldHandler; res([]); }, 5000);
+  });
   recvCert().then(function(cert) {
     var certDir = getCertDir(cert);
     var _preopens = [certDir].concat(_mounts);
@@ -307,8 +318,9 @@ function _realHandler(msg) {
     var fds = [undefined, undefined, undefined].concat(_preopens).concat([undefined, undefined]);
     var args = ['arg0', '--net=socket=listenfd=' + _listenFd, '--mac', genmac(), '-entrypoint', '/bin/sh', '--'].concat(${JSON.stringify(cmd)});
     var env = ${JSON.stringify(env)};
-    var bufsPromise = Promise.resolve(_wasmBuffers);
-    bufsPromise.then(function(bufs) {
+    var bufsPromise = Promise.all([Promise.resolve(_wasmBuffers), _restorePromise]);
+    bufsPromise.then(function(result) {
+      var bufs = result[0];
       var total = bufs.reduce(function(n, b) { return n + b.byteLength; }, 0);
       var merged = new Uint8Array(total); var off = 0;
       for (var b of bufs) { merged.set(new Uint8Array(b), off); off += b.byteLength; }

@@ -108,11 +108,20 @@ export function createSystem(id, opts) {
         const mounts = [...(opts.mounts || [{vmPath:'/root', opfsPath:'home/root'}]), ...(_lm || [])]
         const blobMounts = mounts.map(m => m.desktopHandle ? {vmPath:m.vmPath, type:'desktop'} : m)
         const desktopHandles = mounts.filter(m => m.desktopHandle).map(m => ({vmPath:m.vmPath, handle:m.desktopHandle}))
+        const _idbMounts = (async () => {
+          const lr = await fetch('./containers/layers.json')
+          const layers = await lr.json()
+          const _allLayers = (opts.layers || []).flatMap(layerId => {
+            const layer = layers.find(l => l.id === layerId)
+            return (layer?.idbMounts || []).map(vmPath => ({vmPath}))
+          })
+          return _allLayers
+        })()
         let _env = SHELL_ENV
         if (extraPaths && extraPaths.length) _env = _env.map(e => e.startsWith('PATH=') ? 'PATH=' + extraPaths.join(':') + ':' + e.slice(5) : e)
         if (extraEnv && extraEnv.length) _env = [..._env, ...extraEnv]
         const _cmd = opts.cmd || ['-i']
-        worker = new Worker(makeWorkerBlob(_env, [workerTools, ...sharedScripts], _cmd, blobMounts, []))
+        worker = new Worker(makeWorkerBlob(_env, [workerTools, ...sharedScripts], _cmd, blobMounts, await _idbMounts))
         worker.onerror = e => console.error('worker error [' + id + ']:', e.message, e.filename + ':' + e.lineno)
         worker.postMessage({type:'desktop-handles', handles:desktopHandles, wasmBuffers, layerBuffers:[]}, [...wasmBuffers])
         worker.onmessage = function(e) {
@@ -120,7 +129,8 @@ export function createSystem(id, opts) {
 if (d.type === 'opfs-init' || d.type === 'desktop-init' || d.type === 'wasm-progress') { sys._onProgress && sys._onProgress(d); return }
           if (d.type === 'wc-debug') { console.log('[wc-debug]', JSON.stringify(d)); return }
           if (d.type === 'desktop-write') { d.dh.getFileHandle(d.name, {create:true}).then(fh => fh.createWritable()).then(w => w.write(new Uint8Array(d.data)).then(() => w.close())).catch(e => console.error('desktop-write flush failed:', e)) }
-          if (d.type === 'vfs-write') { vfsIDB.writeFile(d.toolId, d.path, d.data).catch(err => console.error('[vfs-write] failed:', d.path, err.message)) }
+          if (d.type === 'vfs-write') { vfsIDB.writeFile(d.toolId, d.path, d.data).catch(err => console.error('[vfs-write] failed:', d.path, err.message)); return }
+          if (d.type === 'vfs-restore') { vfsIDB.restoreForVm(d.toolIds).then(files => worker.postMessage({type:'vfs-restore-ack', files})).catch(e => { console.error('[vfs-restore] failed:', e.message); worker.postMessage({type:'vfs-restore-ack', files:[], error:e.message}); }); return }
         }
         stackWorker = new Worker(makeStackWorkerBlob(stackSrc, sharedScripts))
         nwStack = window.newStack(worker, IMAGE_PREFIX, chunks, stackWorker, DEMO_BASE + '/src/c2w-net-proxy.wasm')
