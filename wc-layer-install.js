@@ -27,12 +27,6 @@ async function extractBinaryFromTgz(url, binaryName) {
   throw new Error('binary not found in tgz: ' + binaryName)
 }
 
-async function fetchBytes(url) {
-  const r = await fetch(url)
-  if (!r.ok) throw new Error('fetch failed: ' + url + ' ' + r.status)
-  return new Uint8Array(await r.arrayBuffer())
-}
-
 async function writeToOpfs(dirHandle, name, bytes) {
   const fh = await dirHandle.getFileHandle(name, {create:true})
   const w = await fh.createWritable()
@@ -50,8 +44,6 @@ export async function installLayerBinaries(layerIds) {
     .then(h => h.getDirectoryHandle('root', {create:true}))
   const localDir = await homeRoot.getDirectoryHandle('.local', {create:true})
   const binHandle = await localDir.getDirectoryHandle('bin', {create:true})
-  const libHandle = await localDir.getDirectoryHandle('lib', {create:true})
-  let hasLibs = false
   for (const id of layerIds) {
     const layer = all.find(l => l.id === id)
     if (!layer) continue
@@ -63,20 +55,6 @@ export async function installLayerBinaries(layerIds) {
         await writeToOpfs(binHandle, layer.binaryName, bytes)
       }
     }
-    if (layer.libs && layer.libs.length) {
-      for (const lib of layer.libs) {
-        let exists = false
-        try { await libHandle.getFileHandle(lib.name); exists = true } catch(e) {}
-        if (!exists) {
-          const bytes = await fetchBytes(lib.url)
-          await writeToOpfs(libHandle, lib.name, bytes)
-        }
-        hasLibs = true
-      }
-    }
   }
-  const extraPaths = ['/root/.local/bin']
-  const extraLibPaths = hasLibs ? ['/root/.local/lib'] : []
-  const preloadLibs = hasLibs ? ['/root/.local/lib/libgcc_s.so.1', '/root/.local/lib/libstdc++.so.6'] : []
-  return { mounts: [], extraPaths, extraLibPaths, preloadLibs }
+  return { mounts: [], extraPaths: ['/root/.local/bin'] }
 }
