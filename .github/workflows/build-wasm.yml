@@ -48,7 +48,9 @@ jobs:
           rm -f containers/nodejs*.wasm
           split -b 50M -a 2 -d out.wasm nodejs_chunk_
           for f in nodejs_chunk_??; do mv "$f" "containers/$(echo $f | sed 's/nodejs_chunk_/nodejs/').wasm"; done
-          ls containers/nodejs*.wasm | wc -l > containers/nodejs.chunks
+          COUNT=$(ls containers/nodejs*.wasm | wc -l)
+          HASH=$(sha256sum containers/nodejs*.wasm | sha256sum | cut -d' ' -f1)
+          echo "$COUNT $HASH" > containers/nodejs.chunks
           rm -f out.wasm
       - name: commit
         run: |
